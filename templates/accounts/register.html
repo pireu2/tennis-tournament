@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h2 class="mb-4">Choose Registration Type</h2>
+            
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Player</h5>
+                            <p class="card-text">Register as a tennis player to participate in tournaments.</p>
+                            <a href="{% url 'accounts:register_player' %}" class="btn btn-primary">Register as Player</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Referee</h5>
+                            <p class="card-text">Register as a referee to officiate tennis matches.</p>
+                            <a href="{% url 'accounts:register_referee' %}" class="btn btn-primary">Register as Referee</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Admin</h5>
+                            <p class="card-text">Register as an administrator to manage the platform.</p>
+                            <a href="{% url 'accounts:register_admin' %}" class="btn btn-primary">Register as Admin</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <p>Already have an account? <a href="{% url 'accounts:login' %}">Login here</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

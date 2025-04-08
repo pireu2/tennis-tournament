@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Profile Information</h4>
+                </div>
+                <div class="card-body">
+
+                    <h5>{{ user_profile.get_full_name|default:user_profile.username }}</h5>
+                    <p class="text-muted">
+                        {% if is_player %}
+                            Tennis Player
+                        {% elif is_referee %}
+                            Referee
+                        {% elif is_admin %}
+                            Administrator
+                        {% endif %}
+                    </p>
+
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>Username:</strong> {{ user_profile.username }}</li>
+                        <li class="list-group-item"><strong>Email:</strong> {{ user_profile.email }}</li>
+                        {% if user_profile.first_name %}
+                            <li class="list-group-item"><strong>First Name:</strong> {{ user_profile.first_name }}</li>
+                        {% endif %}
+                        {% if user_profile.last_name %}
+                            <li class="list-group-item"><strong>Last Name:</strong> {{ user_profile.last_name }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'accounts:edit_profile' %}" class="btn btn-primary">Edit Profile</a>
+                    <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-secondary">Change Password</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            {% if is_player %}
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Player Details</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            {% if player_profile.date_of_birth %}
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>Date of Birth:</strong>
+                                        <span>{{ player_profile.date_of_birth|date:"F d, Y" }}</span>
+                                    </div>
+                                </li>
+                            {% endif %}
+                            
+                            {% if player_profile.gender %}
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>Gender:</strong>
+                                        <span>
+                                            {% if player_profile.gender == 'M' %}
+                                                Male
+                                            {% elif player_profile.gender == 'F' %}
+                                                Female
+                                            {% else %}
+                                                {{ player_profile.get_gender_display }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>Current Ranking:</strong>
+                                    <span class="badge bg-primary rounded-pill">{{ player_profile.ranking }}</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0">Tournament Statistics</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Your tournament statistics will appear here once you participate in tournaments.</p>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if is_referee %}
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Referee Details</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>Certification Level:</strong>
+                                    <span class="badge {% if referee_profile.certification_level == 'BRONZE' %}bg-warning{% elif referee_profile.certification_level == 'SILVER' %}bg-secondary{% elif referee_profile.certification_level == 'GOLD' %}bg-warning text-dark{% elif referee_profile.certification_level == 'PLATINUM' %}bg-info{% else %}bg-primary{% endif %} rounded-pill">
+                                        {% if referee_profile.certification_level == 'BRONZE' %}
+                                            Bronze Level
+                                        {% elif referee_profile.certification_level == 'SILVER' %}
+                                            Silver Level
+                                        {% elif referee_profile.certification_level == 'GOLD' %}
+                                            Gold Level
+                                        {% elif referee_profile.certification_level == 'PLATINUM' %}
+                                            Platinum Level
+                                        {% else %}
+                                            {{ referee_profile.certification_level }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0">Officiated Matches</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Your officiated matches will appear here once you begin refereeing tournaments.</p>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if is_admin %}
+                <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0">Admin Dashboard</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>Admin Status:</strong>
+                                    <span class="badge bg-danger">Administrator</span>
+                                </div>
+                            </li>
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>Account Created:</strong>
+                                    <span>{{ user_profile.date_joined|date:"F d, Y" }}</span>
+                                </div>
+                            </li>
+                            {% if user_profile.is_superuser %}
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>Superuser Status:</strong>
+                                        <span class="badge bg-warning text-dark">Superuser</span>
+                                    </div>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0">Platform Management</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-primary">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Tournaments</h5>
+                                        <p class="card-text">Manage tournaments and matches</p>
+                                        <a href="#" class="btn btn-primary">Manage</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-success">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Players</h5>
+                                        <p class="card-text">View and manage player accounts</p>
+                                        <a href="#" class="btn btn-success">Manage</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-info">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Referees</h5>
+                                        <p class="card-text">View and manage referee accounts</p>
+                                        <a href="#" class="btn btn-info">Manage</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
