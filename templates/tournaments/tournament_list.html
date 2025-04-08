@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Tournaments{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Tennis Tournaments</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if user.is_authenticated and user.is_admin %}
+                <a href="{% url 'tournaments:tournament_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Create Tournament
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filter options -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'tournaments:tournament_list' %}" class="btn btn-outline-primary {% if not status_filter %}active{% endif %}">
+                            All Tournaments
+                        </a>
+                        <a href="{% url 'tournaments:tournament_list' %}?status=upcoming" class="btn btn-outline-primary {% if status_filter == 'upcoming' %}active{% endif %}">
+                            Upcoming
+                        </a>
+                        <a href="{% url 'tournaments:tournament_list' %}?status=registration" class="btn btn-outline-primary {% if status_filter == 'registration' %}active{% endif %}">
+                            Registration Open
+                        </a>
+                        <a href="{% url 'tournaments:tournament_list' %}?status=in_progress" class="btn btn-outline-primary {% if status_filter == 'in_progress' %}active{% endif %}">
+                            In Progress
+                        </a>
+                        <a href="{% url 'tournaments:tournament_list' %}?status=completed" class="btn btn-outline-primary {% if status_filter == 'completed' %}active{% endif %}">
+                            Completed
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if tournaments %}
+        <div class="row">
+            {% for tournament in tournaments %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header {% if tournament.status == 'REGISTRATION' %}bg-success text-white{% elif tournament.status == 'IN_PROGRESS' %}bg-primary text-white{% elif tournament.status == 'COMPLETED' %}bg-secondary text-white{% elif tournament.status == 'CANCELED' %}bg-danger text-white{% else %}bg-warning{% endif %}">
+                            <h5 class="mb-0">{{ tournament.name }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Dates:</strong> {{ tournament.start_date|date:"M d, Y" }} - {{ tournament.end_date|date:"M d, Y" }}</p>
+                            <p><strong>Location:</strong> {{ tournament.location }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge {% if tournament.status == 'REGISTRATION' %}bg-success{% elif tournament.status == 'IN_PROGRESS' %}bg-primary{% elif tournament.status == 'COMPLETED' %}bg-secondary{% elif tournament.status == 'CANCELED' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ tournament.get_status_display }}
+                                </span>
+                            </p>
+                            {% if tournament.registration_deadline %}
+                                <p><strong>Registration Deadline:</strong> {{ tournament.registration_deadline|date:"M d, Y" }}</p>
+                            {% endif %}
+                            <p><strong>Participants:</strong> {{ tournament.participants.count }} / {{ tournament.max_participants }}</p>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{% url 'tournaments:tournament_detail' tournament.id %}" class="btn btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No tournaments found. {% if user.is_authenticated and user.is_admin %}<a href="{% url 'tournaments:tournament_create' %}">Create a tournament</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

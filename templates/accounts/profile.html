@@ -6,13 +6,13 @@
 <div class="container mt-5">
     <div class="row">
         <div class="col-md-4">
+            <!-- User profile info card -->
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">Profile Information</h4>
                 </div>
                 <div class="card-body">
-
-                    <h5>{{ user_profile.get_full_name|default:user_profile.username }}</h5>
+                    <h3>{{ user_profile.get_full_name|default:user_profile.username }}</h3>
                     <p class="text-muted">
                         {% if is_player %}
                             Tennis Player
@@ -24,13 +24,33 @@
                     </p>
 
                     <ul class="list-group list-group-flush">
-                        <li class="list-group-item"><strong>Username:</strong> {{ user_profile.username }}</li>
-                        <li class="list-group-item"><strong>Email:</strong> {{ user_profile.email }}</li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>Username:</strong>
+                                <span>{{ user_profile.username }}</span>
+                            </div>
+                        </li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>Email:</strong>
+                                <span>{{ user_profile.email }}</span>
+                            </div>
+                        </li>
                         {% if user_profile.first_name %}
-                            <li class="list-group-item"><strong>First Name:</strong> {{ user_profile.first_name }}</li>
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>First Name:</strong>
+                                    <span>{{ user_profile.first_name }}</span>
+                                </div>
+                            </li>
                         {% endif %}
                         {% if user_profile.last_name %}
-                            <li class="list-group-item"><strong>Last Name:</strong> {{ user_profile.last_name }}</li>
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>Last Name:</strong>
+                                    <span>{{ user_profile.last_name }}</span>
+                                </div>
+                            </li>
                         {% endif %}
                     </ul>
                 </div>
@@ -39,19 +59,18 @@
                     <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-secondary">Change Password</a>
                 </div>
             </div>
-        </div>
-
-        <div class="col-md-8">
+            
+            <!-- Player-specific info -->
             {% if is_player %}
                 <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
+                    <div class="card-header bg-success text-white">
                         <h4 class="mb-0">Player Details</h4>
                     </div>
                     <div class="card-body">
                         <ul class="list-group list-group-flush">
                             {% if player_profile.date_of_birth %}
                                 <li class="list-group-item">
-                                    <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex justify-content-between">
                                         <strong>Date of Birth:</strong>
                                         <span>{{ player_profile.date_of_birth|date:"F d, Y" }}</span>
                                     </div>
@@ -60,7 +79,7 @@
                             
                             {% if player_profile.gender %}
                                 <li class="list-group-item">
-                                    <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex justify-content-between">
                                         <strong>Gender:</strong>
                                         <span>
                                             {% if player_profile.gender == 'M' %}
@@ -76,7 +95,7 @@
                             {% endif %}
                             
                             <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between">
                                     <strong>Current Ranking:</strong>
                                     <span class="badge bg-primary rounded-pill">{{ player_profile.ranking }}</span>
                                 </div>
@@ -84,17 +103,9 @@
                         </ul>
                     </div>
                 </div>
-                
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h4 class="mb-0">Tournament Statistics</h4>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted">Your tournament statistics will appear here once you participate in tournaments.</p>
-                    </div>
-                </div>
             {% endif %}
             
+            <!-- Referee-specific info -->
             {% if is_referee %}
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
@@ -120,54 +131,347 @@
                                     </span>
                                 </div>
                             </li>
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>Total Matches Officiated:</strong>
+                                    <span class="badge bg-primary rounded-pill">{{ officiated_matches.count }}</span>
+                                </div>
+                            </li>
                         </ul>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h4 class="mb-0">Officiated Matches</h4>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted">Your officiated matches will appear here once you begin refereeing tournaments.</p>
                     </div>
                 </div>
             {% endif %}
             
+            <!-- Admin dashboard links -->
             {% if is_admin %}
+                
+            {% endif %}
+        </div>
+        
+        <div class="col-md-8">
+            <!-- Player matches -->
+            {% if is_player %}
                 <div class="card mb-4">
-                    <div class="card-header bg-danger text-white">
-                        <h4 class="mb-0">Admin Dashboard</h4>
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">My Matches</h4>
+                        <a href="{% url 'matches:match_list' %}" class="btn btn-light btn-sm">View All</a>
                     </div>
                     <div class="card-body">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <strong>Admin Status:</strong>
-                                    <span class="badge bg-danger">Administrator</span>
-                                </div>
+                        <ul class="nav nav-tabs" id="playerMatchesTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab" aria-controls="upcoming" aria-selected="true">
+                                    Upcoming
+                                </button>
                             </li>
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <strong>Account Created:</strong>
-                                    <span>{{ user_profile.date_joined|date:"F d, Y" }}</span>
-                                </div>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button" role="tab" aria-controls="completed" aria-selected="false">
+                                    Completed
+                                </button>
                             </li>
-                            {% if user_profile.is_superuser %}
-                                <li class="list-group-item">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <strong>Superuser Status:</strong>
-                                        <span class="badge bg-warning text-dark">Superuser</span>
-                                    </div>
-                                </li>
-                            {% endif %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab" aria-controls="all" aria-selected="false">
+                                    All
+                                </button>
+                            </li>
                         </ul>
+                        <div class="tab-content" id="playerMatchesTabContent">
+                            <!-- Upcoming matches tab -->
+                            <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
+                                {% if upcoming_matches %}
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tournament</th>
+                                                    <th>Opponent</th>
+                                                    <th>Round</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in upcoming_matches %}
+                                                    <tr>
+                                                        <td>{{ match.tournament.name }}</td>
+                                                        <td>
+                                                            {% if match.player1 == user_profile %}
+                                                                {{ match.player2.get_full_name|default:match.player2.username }}
+                                                            {% else %}
+                                                                {{ match.player1.get_full_name|default:match.player1.username }}
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ match.round_number }}</td>
+                                                        <td>
+                                                            <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% endif %}">
+                                                                {{ match.get_status_display }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mt-3">You don't have any upcoming matches.</p>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Completed matches tab -->
+                            <div class="tab-pane fade" id="completed" role="tabpanel" aria-labelledby="completed-tab">
+                                {% if completed_matches %}
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tournament</th>
+                                                    <th>Opponent</th>
+                                                    <th>Round</th>
+                                                    <th>Result</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in completed_matches %}
+                                                    <tr>
+                                                        <td>{{ match.tournament.name }}</td>
+                                                        <td>
+                                                            {% if match.player1 == user_profile %}
+                                                                {{ match.player2.get_full_name|default:match.player2.username }}
+                                                            {% else %}
+                                                                {{ match.player1.get_full_name|default:match.player1.username }}
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ match.round_number }}</td>
+                                                        <td>
+                                                            {% if match.get_winner == user_profile %}
+                                                                <span class="badge bg-success">Won</span>
+                                                            {% else %}
+                                                                <span class="badge bg-danger">Lost</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mt-3">You haven't completed any matches yet.</p>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- All matches tab -->
+                            <div class="tab-pane fade" id="all" role="tabpanel" aria-labelledby="all-tab">
+                                {% if player_matches %}
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tournament</th>
+                                                    <th>Opponent</th>
+                                                    <th>Round</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in player_matches %}
+                                                    <tr>
+                                                        <td>{{ match.tournament.name }}</td>
+                                                        <td>
+                                                            {% if match.player1 == user_profile %}
+                                                                {{ match.player2.get_full_name|default:match.player2.username }}
+                                                            {% else %}
+                                                                {{ match.player1.get_full_name|default:match.player1.username }}
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ match.round_number }}</td>
+                                                        <td>
+                                                            {% if match.is_completed %}
+                                                                {% if match.get_winner == user_profile %}
+                                                                    <span class="badge bg-success">Won</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-danger">Lost</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% else %}bg-secondary{% endif %}">
+                                                                    {{ match.get_status_display }}
+                                                                </span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mt-3">You haven't participated in any matches yet.</p>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h4 class="mb-0">Platform Management</h4>
+            {% endif %}
+            
+            <!-- Referee matches -->
+            {% if is_referee %}
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Matches I'm Officiating</h4>
+                        <a href="{% url 'matches:match_list' %}" class="btn btn-light btn-sm">Browse Matches</a>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="refereeMatchesTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="upcoming-officiated-tab" data-bs-toggle="tab" data-bs-target="#upcoming-officiated" type="button" role="tab" aria-controls="upcoming-officiated" aria-selected="true">
+                                    Upcoming
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="completed-officiated-tab" data-bs-toggle="tab" data-bs-target="#completed-officiated" type="button" role="tab" aria-controls="completed-officiated" aria-selected="false">
+                                    Completed
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="all-officiated-tab" data-bs-toggle="tab" data-bs-target="#all-officiated" type="button" role="tab" aria-controls="all-officiated" aria-selected="false">
+                                    All
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="refereeMatchesTabContent">
+                            <!-- Upcoming officiated matches tab -->
+                            <div class="tab-pane fade show active" id="upcoming-officiated" role="tabpanel" aria-labelledby="upcoming-officiated-tab">
+                                {% if upcoming_officiated_matches %}
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tournament</th>
+                                                    <th>Players</th>
+                                                    <th>Round</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in upcoming_officiated_matches %}
+                                                    <tr>
+                                                        <td>{{ match.tournament.name }}</td>
+                                                        <td>{{ match.player1.get_full_name|default:match.player1.username }} vs {{ match.player2.get_full_name|default:match.player2.username }}</td>
+                                                        <td>{{ match.round_number }}</td>
+                                                        <td>
+                                                            <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% endif %}">
+                                                                {{ match.get_status_display }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mt-3">You don't have any upcoming matches to officiate.</p>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Completed officiated matches tab -->
+                            <div class="tab-pane fade" id="completed-officiated" role="tabpanel" aria-labelledby="completed-officiated-tab">
+                                {% if completed_officiated_matches %}
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tournament</th>
+                                                    <th>Players</th>
+                                                    <th>Round</th>
+                                                    <th>Winner</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in completed_officiated_matches %}
+                                                    <tr>
+                                                        <td>{{ match.tournament.name }}</td>
+                                                        <td>{{ match.player1.get_full_name|default:match.player1.username }} vs {{ match.player2.get_full_name|default:match.player2.username }}</td>
+                                                        <td>{{ match.round_number }}</td>
+                                                        <td>
+                                                            {% if match.get_winner %}
+                                                                {{ match.get_winner.get_full_name|default:match.get_winner.username }}
+                                                            {% else %}
+                                                                <span class="text-muted">No winner</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mt-3">You haven't completed officiating any matches yet.</p>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- All officiated matches tab -->
+                            <div class="tab-pane fade" id="all-officiated" role="tabpanel" aria-labelledby="all-officiated-tab">
+                                {% if officiated_matches %}
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tournament</th>
+                                                    <th>Players</th>
+                                                    <th>Round</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in officiated_matches %}
+                                                    <tr>
+                                                        <td>{{ match.tournament.name }}</td>
+                                                        <td>{{ match.player1.get_full_name|default:match.player1.username }} vs {{ match.player2.get_full_name|default:match.player2.username }}</td>
+                                                        <td>{{ match.round_number }}</td>
+                                                        <td>
+                                                            <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% elif match.is_completed %}bg-success{% else %}bg-secondary{% endif %}">
+                                                                {{ match.get_status_display }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mt-3">You haven't officiated any matches yet.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Admin dashboard content -->
+            {% if is_admin %}
+            <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0">Admin Dashboard</h4>
                     </div>
                     <div class="card-body">
                         <div class="row text-center">
@@ -176,29 +480,119 @@
                                     <div class="card-body">
                                         <h5 class="card-title">Tournaments</h5>
                                         <p class="card-text">Manage tournaments and matches</p>
-                                        <a href="#" class="btn btn-primary">Manage</a>
+                                        <a href="{% url 'tournaments:tournament_list' %}" class="btn btn-primary">Manage</a>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="card h-100 border-success">
                                     <div class="card-body">
-                                        <h5 class="card-title">Players</h5>
-                                        <p class="card-text">View and manage player accounts</p>
-                                        <a href="#" class="btn btn-success">Manage</a>
+                                        <h5 class="card-title">Users</h5>
+                                        <p class="card-text">View and manage user accounts</p>
+                                        <a href="{% url 'accounts:admin_user_list' %}" class="btn btn-success">Manage</a>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="card h-100 border-info">
                                     <div class="card-body">
-                                        <h5 class="card-title">Referees</h5>
-                                        <p class="card-text">View and manage referee accounts</p>
-                                        <a href="#" class="btn btn-info">Manage</a>
+                                        <h5 class="card-title">Matches</h5>
+                                        <p class="card-text">View and manage matches</p>
+                                        <a href="{% url 'matches:match_list' %}" class="btn btn-info">Manage</a>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Recent Tournaments</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_tournaments %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Participants</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for tournament in recent_tournaments %}
+                                            <tr>
+                                                <td>{{ tournament.name }}</td>
+                                                <td>{{ tournament.start_date|date:"M d, Y" }}</td>
+                                                <td>
+                                                    <span class="badge {% if tournament.status == 'REGISTRATION' %}bg-success{% elif tournament.status == 'IN_PROGRESS' %}bg-primary{% elif tournament.status == 'COMPLETED' %}bg-secondary{% elif tournament.status == 'CANCELED' %}bg-danger{% else %}bg-warning{% endif %}">
+                                                        {{ tournament.get_status_display }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ tournament.participants.count }} / {{ tournament.max_participants }}</td>
+                                                <td>
+                                                    <a href="{% url 'tournaments:tournament_detail' tournament.id %}" class="btn btn-sm btn-primary">View</a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No tournaments have been created yet.</p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        <a href="{% url 'tournaments:tournament_create' %}" class="btn btn-primary">Create Tournament</a>
+                        <a href="{% url 'tournaments:tournament_list' %}" class="btn btn-outline-secondary">View All</a>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0">Matches Needing Referee Assignment</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if unassigned_matches %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Tournament</th>
+                                            <th>Players</th>
+                                            <th>Round</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for match in unassigned_matches %}
+                                            <tr>
+                                                <td>{{ match.tournament.name }}</td>
+                                                <td>{{ match.player1.get_full_name|default:match.player1.username }} vs {{ match.player2.get_full_name|default:match.player2.username }}</td>
+                                                <td>{{ match.round_number }}</td>
+                                                <td>
+                                                    <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% endif %}">
+                                                        {{ match.get_status_display }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">All matches have been assigned referees.</p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        <a href="{% url 'matches:match_list' %}" class="btn btn-outline-primary">View All Matches</a>
                     </div>
                 </div>
             {% endif %}

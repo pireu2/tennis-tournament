@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ tournament.name }} - Matches{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>{{ tournament.name }} - Matches</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'tournaments:tournament_detail' tournament.id %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Tournament
+            </a>
+        </div>
+    </div>
+
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Tournament Bracket</h4>
+        </div>
+        <div class="card-body">
+            {% if matches_by_round %}
+                <div class="accordion" id="roundsAccordion">
+                    {% for round_number, round_matches in matches_by_round.items %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ round_number }}">
+                                <button class="accordion-button {% if round_number != 1 %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ round_number }}" aria-expanded="{% if round_number == 1 %}true{% else %}false{% endif %}" aria-controls="collapse{{ round_number }}">
+                                    Round {{ round_number }} 
+                                    <span class="badge bg-secondary ms-2">{{ round_matches|length }} match{{ round_matches|length|pluralize:"es" }}</span>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ round_number }}" class="accordion-collapse collapse {% if round_number == 1 %}show{% endif %}" aria-labelledby="heading{{ round_number }}" data-bs-parent="#roundsAccordion">
+                                <div class="accordion-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Match</th>
+                                                    <th>Players</th>
+                                                    <th>Score</th>
+                                                    <th>Status</th>
+                                                    <th>Referee</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for match in round_matches %}
+                                                    <tr>
+                                                        <td>#{{ match.id }}</td>
+                                                        <td>
+                                                            <div>{{ match.player1.get_full_name|default:match.player1.username }}</div>
+                                                            <div>vs</div>
+                                                            <div>{{ match.player2.get_full_name|default:match.player2.username }}</div>
+                                                        </td>
+                                                        <td>
+                                                            {% if match.score %}
+                                                                {{ match.score }}
+                                                                {% if match.score.winner %}
+                                                                    <br>
+                                                                    <small class="text-success">
+                                                                        Winner: {{ match.score.winner.get_full_name|default:match.score.winner.username }}
+                                                                    </small>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="text-muted">No score</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge {% if match.status == 'SCHEDULED' %}bg-warning{% elif match.status == 'IN_PROGRESS' %}bg-primary{% elif match.status == 'COMPLETED' %}bg-success{% else %}bg-secondary{% endif %}">
+                                                                {{ match.get_status_display }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            {% if match.referee %}
+                                                                {{ match.referee.user.get_full_name|default:match.referee.user.username }}
+                                                            {% else %}
+                                                                <span class="text-muted">Unassigned</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-center py-3">No matches have been generated for this tournament yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

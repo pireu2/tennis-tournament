@@ -3,6 +3,7 @@ from django.contrib.auth import login
 from django.views import View
 from django.views.generic import CreateView
 from django.urls import reverse_lazy
+from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
@@ -12,6 +13,10 @@ from django.contrib.auth.views import PasswordChangeView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import UpdateView, DetailView
 from .forms import UserUpdateForm, PlayerProfileUpdateForm, RefereeProfileUpdateForm, CustomPasswordChangeForm
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.views.generic import ListView
+from django.contrib.auth.mixins import UserPassesTestMixin
 
 
 def register_view(request):
@@ -148,11 +153,60 @@ class ProfileView(LoginRequiredMixin, DetailView):
         if user.is_player():
             context['is_player'] = True
             context['player_profile'] = user.tennis_player
+            
+            # Get player's matches (both as player1 and player2)
+            from apps.matches.models import Match
+            player_matches = Match.objects.filter(
+                Q(player1=user) | Q(player2=user)
+            ).order_by('-tournament__start_date', 'round_number')
+            
+            context['player_matches'] = player_matches
+            
+            # Get recent upcoming matches
+            context['upcoming_matches'] = player_matches.filter(
+                status__in=['SCHEDULED', 'IN_PROGRESS']
+            )[:5]
+            
+            # Get recent completed matches
+            context['completed_matches'] = player_matches.filter(
+                status='COMPLETED'
+            )[:5]
+            
         elif user.is_referee():
             context['is_referee'] = True
             context['referee_profile'] = user.referee
+            
+            # Get matches officiated by this referee
+            from apps.matches.models import Match
+            context['officiated_matches'] = Match.objects.filter(
+                referee=user.referee
+            ).order_by('-tournament__start_date', 'round_number')
+            
+            # Get upcoming matches to officiate
+            context['upcoming_officiated_matches'] = context['officiated_matches'].filter(
+                status__in=['SCHEDULED', 'IN_PROGRESS']
+            )[:5]
+            
+            # Get completed matches officiated
+            context['completed_officiated_matches'] = context['officiated_matches'].filter(
+                status='COMPLETED'
+            )[:5]
+            
         elif user.is_admin():
             context['is_admin'] = True
+            
+            # Get recent tournaments for admin
+            from apps.tournaments.models import Tournament
+            context['recent_tournaments'] = Tournament.objects.all().order_by(
+                '-start_date'
+            )[:5]
+            
+            # Get matches that need referee assignment
+            from apps.matches.models import Match
+            context['unassigned_matches'] = Match.objects.filter(
+                referee__isnull=True,
+                status__in=['SCHEDULED', 'IN_PROGRESS']
+            ).order_by('tournament__start_date', 'round_number')[:10]
 
         return context
 
@@ -248,3 +302,137 @@ class CustomPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
         response = super().form_valid(form)
         messages.success(self.request, "Your password has been changed successfully!")
         return response
+
+
+class AdminRequiredMixin(UserPassesTestMixin):
+    """Mixin to restrict views to admin users only"""
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.is_admin()
+    
+    def handle_no_permission(self):
+        messages.error(self.request, "You don't have permission to access this page.")
+        return redirect('accounts:profile')
+
+class UserListView(AdminRequiredMixin, ListView):
+    """View for admins to see all users"""
+    model = User
+    template_name = 'accounts/admin/user_list.html'
+    context_object_name = 'users'
+    
+    def get_queryset(self):
+        # Get the filter parameter from the URL query string
+        user_type = self.request.GET.get('type', None)
+        queryset = User.objects.all().order_by('username')
+        
+        # Filter by user type if specified
+        if user_type:
+            queryset = queryset.filter(user_type=user_type.upper())
+            
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['user_type'] = self.request.GET.get('type', None)
+        return context
+
+class AdminEditUserView(AdminRequiredMixin, UpdateView):
+    """View for admins to edit any user profile"""
+    model = User
+    form_class = UserUpdateForm
+    template_name = 'accounts/admin/edit_user.html'
+    
+    def get_success_url(self):
+        messages.success(self.request, f"User {self.object.username}'s profile updated successfully!")
+        return reverse('accounts:admin_user_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.get_object()
+        
+        # Add player form if user is a player
+        if hasattr(user, 'tennis_player'):
+            if self.request.POST:
+                context['player_form'] = PlayerProfileUpdateForm(
+                    self.request.POST, 
+                    instance=user.tennis_player
+                )
+            else:
+                context['player_form'] = PlayerProfileUpdateForm(instance=user.tennis_player)
+                
+        # Add referee form if user is a referee
+        elif hasattr(user, 'referee'):
+            if self.request.POST:
+                context['referee_form'] = RefereeProfileUpdateForm(
+                    self.request.POST, 
+                    instance=user.referee
+                )
+            else:
+                context['referee_form'] = RefereeProfileUpdateForm(instance=user.referee)
+        
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        user = self.object
+        
+        # Handle player form
+        if hasattr(user, 'tennis_player'):
+            player_form = PlayerProfileUpdateForm(
+                request.POST, 
+                instance=user.tennis_player
+            )
+            if form.is_valid() and player_form.is_valid():
+                form.save()
+                player_form.save()
+                return redirect(self.get_success_url())
+            else:
+                return self.render_to_response(
+                    self.get_context_data(form=form, player_form=player_form)
+                )
+                
+        # Handle referee form
+        elif hasattr(user, 'referee'):
+            referee_form = RefereeProfileUpdateForm(
+                request.POST, 
+                instance=user.referee
+            )
+            if form.is_valid() and referee_form.is_valid():
+                form.save()
+                referee_form.save()
+                return redirect(self.get_success_url())
+            else:
+                return self.render_to_response(
+                    self.get_context_data(form=form, referee_form=referee_form)
+                )
+                
+        # Handle admin form (no profile)
+        else:
+            if form.is_valid():
+                form.save()
+                return redirect(self.get_success_url())
+            else:
+                return self.render_to_response(
+                    self.get_context_data(form=form)
+                )
+
+class UserDetailView(AdminRequiredMixin, DetailView):
+    """View for admins to see detailed user info"""
+    model = User
+    template_name = 'accounts/admin/user_detail.html'
+    context_object_name = 'user_detail'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.get_object()
+        
+        if hasattr(user, 'tennis_player'):
+            context['is_player'] = True
+            context['player_profile'] = user.tennis_player
+        elif hasattr(user, 'referee'):
+            context['is_referee'] = True
+            context['referee_profile'] = user.referee
+        elif user.is_admin():
+            context['is_admin'] = True
+            
+        return context
