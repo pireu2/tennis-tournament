@@ -12,6 +12,22 @@ from apps.accounts.models import User
 from apps.matches.models import Match, MatchScore
 from .forms import TournamentForm
 
+from core.strategies.match_generator import (
+    MatchGeneratorContext, 
+    SingleEliminationStrategy,
+    RoundRobinStrategy
+)
+from core.observers import TournamentNotificationSubject, EmailNotifier, DatabaseNotifier
+
+# Set up the notification system
+tournament_notifier = TournamentNotificationSubject()
+email_observer = EmailNotifier()
+db_observer = DatabaseNotifier()
+
+# Register both observers
+tournament_notifier.attach(email_observer)
+tournament_notifier.attach(db_observer)
+
 class AdminRequiredMixin:
     """Mixin to restrict views to admin users only"""
     def dispatch(self, request, *args, **kwargs):
@@ -42,11 +58,15 @@ class TournamentCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
     form_class = TournamentForm
     template_name = 'tournaments/tournament_form.html'
     success_url = reverse_lazy('tournaments:tournament_list')
-    
+
     def form_valid(self, form):
         form.instance.organizer = self.request.user
+        response = super().form_valid(form)
+ 
+        tournament_notifier.tournament_created(self.object)
+
         messages.success(self.request, "Tournament created successfully!")
-        return super().form_valid(form)
+        return response
 
 class TournamentDetailView(DetailView):
     model = Tournament
@@ -112,6 +132,7 @@ class PlayerRegistrationView(LoginRequiredMixin, View):
         else:
             tournament.participants.add(request.user)
             messages.success(request, "You have successfully registered for the tournament.")
+            tournament_notifier.player_registered(tournament, request.user)
         
         return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament.pk}))
 
@@ -132,37 +153,24 @@ class GenerateMatchesView(LoginRequiredMixin, AdminRequiredMixin, View):
         # Get all players
         players = list(tournament.participants.all())
         
-        # Ensure even number of players by adding a bye if necessary
-        if len(players) % 2 != 0:
-            messages.warning(request, "Odd number of players - one player will receive a bye in the first round.")
+        # Use strategy pattern to generate matches
+        generator = MatchGeneratorContext()
         
-        # Shuffle players
-        random.shuffle(players)
-        
-        # Calculate number of rounds (log2 of players, rounded up)
-        import math
-        num_rounds = math.ceil(math.log2(len(players)))
-        
-        # Generate first round matches
-        for i in range(0, len(players), 2):
-            if i+1 < len(players):
-                match = Match(
-                    tournament=tournament,
-                    player1=players[i],
-                    player2=players[i+1],
-                    round_number=1,
-                    status='SCHEDULED'
-                )
-                match.save()
-                
-                # Create empty score object
-                MatchScore.objects.create(match=match)
+        # Choose strategy based on tournament type or request parameter
+        if tournament.tournament_type == 'ROUND_ROBIN':
+            generator.set_strategy(RoundRobinStrategy())
+        else:
+            generator.set_strategy(SingleEliminationStrategy())
+            
+        # Generate matches
+        matches = generator.generate_tournament_matches(tournament, players)
         
         # Update tournament status
         tournament.status = 'IN_PROGRESS'
         tournament.save()
         
-        messages.success(request, f"Successfully generated {Match.objects.filter(tournament=tournament).count()} matches!")
+        # Redirect to tournament detail page
+        messages.success(request, f"{len(matches)} matches have been generated successfully.")
         return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament.pk}))
 
 class TournamentMatchesView(ListView):
@@ -186,3 +194,25 @@ class TournamentMatchesView(ListView):
         
         context['matches_by_round'] = matches_by_round
         return context
+    
+class UpdateTournamentStatusView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        tournament = get_object_or_404(Tournament, pk=kwargs['pk'])
+        
+        # Update tournament status logic
+        old_status = tournament.status
+        new_status = request.POST.get('status')
+        
+        if new_status and new_status in dict(Tournament.STATUS_CHOICES):
+            tournament.status = new_status
+            tournament.save()
+            
+            # Notify observers about the status change
+            if old_status != new_status:
+                tournament_notifier.tournament_status_changed(tournament)
+                
+            messages.success(request, "Tournament status updated successfully.")
+        else:
+            messages.error(request, "Invalid tournament status.")
+            
+        return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament.pk}))

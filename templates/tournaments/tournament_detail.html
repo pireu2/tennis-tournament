@@ -55,6 +55,12 @@
                                 <span>{{ tournament.location }}</span>
                             </div>
                         </li>
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>Tournament Format:</strong>
+                                <span>{{ tournament.get_tournament_type_display }}</span>
+                            </div>
+                        </li>
                         {% if tournament.registration_deadline %}
                             <li class="list-group-item">
                                 <div class="d-flex justify-content-between">

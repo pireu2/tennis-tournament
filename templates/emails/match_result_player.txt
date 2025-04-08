@@ -1,0 +1,38 @@
+Hello {{ recipient.first_name }},
+
+A match you participated in has been completed.
+
+Match Results:
+- Tournament: {{ tournament.name }}
+- Round: {{ match.get_round_number_display }}
+- Opponent: {% if recipient.id == match.player1.id %}{{ match.player2.get_full_name }}{% else %}{{ match.player1.get_full_name }}{% endif %}
+
+Score:
+{% if score.player1_set1 is not None and score.player2_set1 is not None %}
+- Set 1: {{ score.player1_set1 }}-{{ score.player2_set1 }}
+{% endif %}
+{% if score.player1_set2 is not None and score.player2_set2 is not None %}
+- Set 2: {{ score.player1_set2 }}-{{ score.player2_set2 }}
+{% endif %}
+{% if score.player1_set3 is not None and score.player2_set3 is not None %}
+- Set 3: {{ score.player1_set3 }}-{{ score.player2_set3 }}
+{% endif %}
+{% if score.player1_set4 is not None and score.player2_set4 is not None %}
+- Set 4: {{ score.player1_set4 }}-{{ score.player2_set4 }}
+{% endif %}
+{% if score.player1_set5 is not None and score.player2_set5 is not None %}
+- Set 5: {{ score.player1_set5 }}-{{ score.player2_set5 }}
+{% endif %}
+
+Result: {% if is_winner %}Congratulations! You won this match.{% else %}You were defeated in this match.{% endif %}
+
+{% if is_winner and match.next_round_match %}
+Your next match information will be available soon. Please check the tournament page for updates.
+{% endif %}
+
+You can view complete match details at:
+https://127.0.0.1:8000/matches/{{ match.id }}/
+
+{% if is_winner %}Good luck in your next match!{% else %}Thank you for participating in the tournament.{% endif %}
+
+Tennis Tournament Management System

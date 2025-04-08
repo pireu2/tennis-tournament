@@ -8,5 +8,6 @@ urlpatterns = [
     path("accounts/", include('apps.accounts.urls')),
     path("tournaments/", include('apps.tournaments.urls')),
     path("matches/", include('apps.matches.urls')),
+    path('notifications/', include('apps.notifications.urls', namespace='notifications')),
     path("", TemplateView.as_view(template_name="home.html"), name="home"),
 ]

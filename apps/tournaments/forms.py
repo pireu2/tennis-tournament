@@ -5,12 +5,21 @@ from django.core.exceptions import ValidationError
 class TournamentForm(forms.ModelForm):
     class Meta:
         model = Tournament
-        fields = ['name', 'start_date', 'end_date', 'location', 'registration_deadline', 
-                  'max_participants', 'status', 'description']
+        fields = [
+            'name', 'location', 'start_date', 'end_date', 
+            'registration_deadline', 'max_participants', 
+            'status', 'tournament_type', 'description'
+        ]
         widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'location': forms.TextInput(attrs={'class': 'form-control'}),
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'registration_deadline': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'max_participants': forms.NumberInput(attrs={'class': 'form-control', 'min': '2'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'tournament_type': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
         }
     
     def __init__(self, *args, **kwargs):

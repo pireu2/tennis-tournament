@@ -1,0 +1,19 @@
+Hello Administrator,
+
+A new tournament has been created in the system.
+
+Tournament Details:
+- Name: {{ tournament.name }}
+- Organizer: {{ organizer }}
+- Location: {{ tournament.location }}
+- Start Date: {{ tournament.start_date|date:"F j, Y" }}
+- End Date: {{ tournament.end_date|date:"F j, Y" }}
+- Format: {{ tournament.get_tournament_type_display }}
+- Maximum Participants: {{ tournament.max_participants }}
+- Status: {{ tournament.get_status_display }}
+
+You can review the tournament details at:
+https://127.0.0.1:8000/tournaments/{{ tournament.id }}/
+
+Thank you,
+Tennis Tournament Management System

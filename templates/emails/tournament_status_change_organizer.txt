@@ -1,0 +1,26 @@
+Hello {{ tournament.organizer.first_name }},
+
+The status of your tournament "{{ tournament.name }}" has been updated to {{ new_status }}.
+
+{% if tournament.status == 'IN_PROGRESS' %}
+The tournament is now in progress. Matches have been generated and players are being notified.
+{% elif tournament.status == 'COMPLETED' %}
+The tournament has been completed. Congratulations on running a successful event!
+{% elif tournament.status == 'CANCELED' %}
+The tournament has been canceled. All participants will be notified.
+{% elif tournament.status == 'REGISTRATION' %}
+Registration is now open for players. The registration deadline is {{ tournament.registration_deadline|date:"F j, Y" }}.
+{% endif %}
+
+Tournament Details:
+- Name: {{ tournament.name }}
+- Location: {{ tournament.location }}
+- Start Date: {{ tournament.start_date|date:"F j, Y" }}
+- End Date: {{ tournament.end_date|date:"F j, Y" }}
+- Current Status: {{ new_status }}
+
+You can manage your tournament at:
+https://127.0.0.1:8000/tournaments/{{ tournament.id }}/
+
+Thank you,
+Tennis Tournament Management System

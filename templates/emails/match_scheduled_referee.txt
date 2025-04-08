@@ -1,0 +1,27 @@
+Hello {{ match.referee.user.first_name }},
+
+You have been assigned to officiate a match in the "{{ tournament.name }}" tournament.
+
+Match Details:
+- Tournament: {{ tournament.name }}
+- Location: {{ tournament.location }}
+- Round: {{ match.get_round_number_display }}
+{% if match.scheduled_time %}
+- Date and Time: {{ match.scheduled_time|date:"F j, Y, g:i A" }}
+{% else %}
+- Date: Between {{ tournament.start_date|date:"F j" }} and {{ tournament.end_date|date:"F j, Y" }}
+{% endif %}
+- Court: {{ match.court|default:"To be announced" }}
+
+Players:
+- {{ match.player1.get_full_name }}
+- {{ match.player2.get_full_name }}
+
+Please arrive at least 30 minutes before the scheduled match time. You will be responsible for recording the match scores in the system.
+
+You can view and manage this match at:
+https://127.0.0.1:8000/matches/{{ match.id }}/
+
+Thank you for your service as a referee.
+
+Tennis Tournament Management System

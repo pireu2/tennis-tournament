@@ -1,0 +1,20 @@
+Hello {{ tournament.organizer.first_name }},
+
+A new player has registered for your tournament "{{ tournament.name }}".
+
+Player Details:
+- Name: {{ player.get_full_name }}
+- Email: {{ player.email }}
+{% if player.is_player %}
+- Ranking: {{ player.tennis_player.ranking|default:"Not specified" }}
+{% endif %}
+
+Current Registration Stats:
+- Registered Players: {{ tournament.participants.count }}
+- Maximum Capacity: {{ tournament.max_participants }}
+
+You can view the full list of participants at:
+https://127.0.0.1:8000/tournaments/{{ tournament.id }}/
+
+Thank you,
+Tennis Tournament Management System

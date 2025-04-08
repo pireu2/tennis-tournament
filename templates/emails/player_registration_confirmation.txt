@@ -1,0 +1,25 @@
+Hello {{ player.first_name }},
+
+Thank you for registering for "{{ tournament.name }}"!
+
+Your registration has been confirmed. Please note the following details:
+
+Tournament Information:
+- Name: {{ tournament.name }}
+- Location: {{ tournament.location }}
+- Start Date: {{ tournament.start_date|date:"F j, Y" }}
+- End Date: {{ tournament.end_date|date:"F j, Y" }}
+- Format: {{ tournament.get_tournament_type_display }}
+
+Important:
+- Please arrive at least 30 minutes before your scheduled match time
+- Check the tournament page regularly for schedule updates
+- Bring appropriate tennis equipment and attire
+
+You can view the tournament details and matches at:
+https://127.0.0.1:8000/tournaments/{{ tournament.id }}/
+
+We look forward to seeing you at the tournament!
+
+Best regards,
+Tennis Tournament Management System

@@ -1,0 +1,34 @@
+Hello,
+
+You have a match scheduled in the "{{ tournament.name }}" tournament.
+
+Match Details:
+- Tournament: {{ tournament.name }}
+- Location: {{ tournament.location }}
+- Round: {{ match.get_round_number_display }}
+{% if match.scheduled_time %}
+- Date and Time: {{ match.scheduled_time|date:"F j, Y, g:i A" }}
+{% else %}
+- Date: Between {{ tournament.start_date|date:"F j" }} and {{ tournament.end_date|date:"F j, Y" }}
+{% endif %}
+- Court: {{ match.court|default:"To be announced" }}
+
+Your opponent will be:
+{% if match.player1.id == recipient.id %}
+{{ match.player2.get_full_name }}
+{% else %}
+{{ match.player1.get_full_name }}
+{% endif %}
+
+{% if match.referee %}
+This match will be officiated by: {{ match.referee.user.get_full_name }}
+{% else %}
+A referee will be assigned to this match soon.
+{% endif %}
+
+You can view match details at:
+https://127.0.0.1:8000/matches/{{ match.id }}/
+
+Good luck!
+
+Tennis Tournament Management System

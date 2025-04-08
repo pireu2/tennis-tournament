@@ -8,6 +8,15 @@ from django.http import HttpResponseRedirect
 from .models import Match, MatchScore
 from .forms import MatchScoreForm
 
+from core.observers import TournamentNotificationSubject, EmailNotifier, DatabaseNotifier
+
+tournament_notifier = TournamentNotificationSubject()
+email_observer = EmailNotifier()
+db_observer = DatabaseNotifier()
+
+tournament_notifier.attach(email_observer)
+tournament_notifier.attach(db_observer)
+
 class MatchListView(ListView):
     model = Match
     template_name = 'matches/match_list.html'
@@ -29,11 +38,17 @@ class MatchDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         match = self.get_object()
         
-        # Add score form for referees
         user = self.request.user
         if user.is_authenticated and user.is_referee():
             if hasattr(match, 'referee') and match.referee and match.referee.user == user:
-                context['score_form'] = MatchScoreForm(instance=match.score)
+                # Check if the match has a score
+                try:
+                    # Try to get the score instance
+                    score_instance = match.score
+                    context['score_form'] = MatchScoreForm(instance=score_instance)
+                except match._meta.model.score.RelatedObjectDoesNotExist:
+                    # If no score record exists yet, provide an empty form
+                    context['score_form'] = MatchScoreForm()
         
         # Check if user is the referee
         if user.is_authenticated and user.is_referee():
@@ -91,7 +106,17 @@ class UpdateScoreView(LoginRequiredMixin, View):
             messages.error(request, "Cannot update scores for completed or cancelled matches.")
             return HttpResponseRedirect(reverse('matches:match_detail', kwargs={'pk': match.pk}))
         
-        form = MatchScoreForm(request.POST, instance=match.score)
+        # Get or create the score object
+        try:
+            score_instance = match.score
+        except Match.score.RelatedObjectDoesNotExist:
+            # Create a new score instance if it doesn't exist
+            score_instance = MatchScore(match=match)
+            score_instance.save()
+        
+        # Now use the score instance with the form
+        form = MatchScoreForm(request.POST, instance=score_instance)
+        
         if form.is_valid():
             score = form.save(commit=False)
             
@@ -104,6 +129,7 @@ class UpdateScoreView(LoginRequiredMixin, View):
             if winner:
                 match.status = 'COMPLETED'
                 match.save()
+                tournament_notifier.match_result_recorded(match)
                 
                 # Generate next round match if applicable
                 self.advance_winner_to_next_round(match, winner)
