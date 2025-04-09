@@ -1,108 +1,213 @@
 {% extends 'base.html' %}
-{% load match_tags %}
 
-{% block title %}All Matches{% endblock %}
+{% block title %}Matches{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-4">
     <div class="row mb-4">
         <div class="col-md-8">
-            <h2>Tennis Matches</h2>
+            <h2>Matches</h2>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{% url 'tournaments:tournament_list' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-trophy"></i> View Tournaments
-            </a>
-        </div>
-    </div>
-
-    <!-- Filter options -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="btn-group" role="group">
-                        <a href="{% url 'matches:match_list' %}" class="btn btn-outline-primary {% if not request.GET.status %}active{% endif %}">
-                            All Matches
-                        </a>
-                        <a href="{% url 'matches:match_list' %}?status=scheduled" class="btn btn-outline-primary {% if request.GET.status == 'scheduled' %}active{% endif %}">
-                            Scheduled
-                        </a>
-                        <a href="{% url 'matches:match_list' %}?status=in_progress" class="btn btn-outline-primary {% if request.GET.status == 'in_progress' %}active{% endif %}">
-                            In Progress
-                        </a>
-                        <a href="{% url 'matches:match_list' %}?status=completed" class="btn btn-outline-primary {% if request.GET.status == 'completed' %}active{% endif %}">
-                            Completed
-                        </a>
-                    </div>
-                </div>
+            <div class="btn-group">
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Home
+                </a>
             </div>
         </div>
     </div>
 
-    {% if matches %}
-        <div class="card">
-            <div class="card-body p-0">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Filter Matches</h4>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        {% for status_code, status_name in status_choices %}
+                            <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
+                                {{ status_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> Apply Filter
+                    </button>
+                    <a href="{% url 'matches:match_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Clear Filter
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if is_admin %}
+    <form id="exportForm" method="post">
+        {% csrf_token %}
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="badge bg-primary" id="selectedCount">0 selected</span>
+                <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-secondary">Select All</button>
+                <button type="button" id="deselectAllBtn" class="btn btn-sm btn-outline-secondary">Deselect All</button>
+            </div>
+            <div>
+                <button type="submit" formaction="{% url 'matches:export_csv' %}" class="btn btn-success" id="csvBtn" disabled>
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+                </button>
+                <button type="submit" formaction="{% url 'matches:export_txt' %}" class="btn btn-primary" id="txtBtn" disabled>
+                    <i class="bi bi-file-earmark-text"></i> Export as TXT
+                </button>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Match List</h4>
+        </div>
+        <div class="card-body p-0">
+            {% if matches %}
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover table-striped mb-0">
                         <thead class="table-light">
                             <tr>
+                                {% if is_admin %}
+                                <th width="50px"><input type="checkbox" id="masterCheckbox" class="form-check-input"></th>
+                                {% endif %}
                                 <th>Tournament</th>
-                                <th>Players</th>
                                 <th>Round</th>
+                                <th>Players</th>
                                 <th>Status</th>
-                                <th>Referee</th>
-                                <th>Score</th>
+                                <th>Schedule</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for match in matches %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'tournaments:tournament_detail' match.tournament.id %}">
-                                            {{ match.tournament.name }}
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div>{{ match.player1.get_full_name|default:match.player1.username }}</div>
-                                        <div class="text-center">vs</div>
-                                        <div>{{ match.player2.get_full_name|default:match.player2.username }}</div>
-                                    </td>
-                                    <td>{{ match.round_number }}</td>
-                                    <td>
-                                        <span class="badge {% if match.status == 'SCHEDULED' %}bg-warning{% elif match.status == 'IN_PROGRESS' %}bg-primary{% elif match.status == 'COMPLETED' %}bg-success{% else %}bg-secondary{% endif %}">
-                                            {{ match.get_status_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if match.referee %}
-                                            {{ match.referee.user.get_full_name|default:match.referee.user.username }}
-                                        {% else %}
-                                            <span class="text-muted">Unassigned</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if match.score %}
-                                            {{ match.score }}
-                                        {% else %}
-                                            <span class="text-muted">No score</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">View</a>
-                                    </td>
-                                </tr>
+                            <tr>
+                                {% if is_admin %}
+                                <td>
+                                    <input type="checkbox" class="match-checkbox form-check-input" name="match_ids" value="{{ match.id }}">
+                                </td>
+                                {% endif %}
+                                <td>{{ match.tournament.name }}</td>
+                                <td>{{ match.get_round_number_display }}</td>
+                                <td>
+                                    {% if match.player1 %}{{ match.player1.get_full_name }}{% else %}TBD{% endif %} vs.
+                                    {% if match.player2 %}{{ match.player2.get_full_name }}{% else %}TBD{% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if match.status == 'SCHEDULED' %}bg-primary{% elif match.status == 'IN_PROGRESS' %}bg-warning{% elif match.status == 'COMPLETED' %}bg-success{% elif match.status == 'CANCELED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                        {{ match.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if match.scheduled_time %}
+                                        {{ match.scheduled_time|date:"M d, Y H:i" }}
+                                    {% else %}
+                                        Not scheduled
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x" style="font-size: 2rem;"></i>
+                    <p class="mt-3">No matches found with the current filter.</p>
+                </div>
+            {% endif %}
         </div>
-    {% else %}
-        <div class="alert alert-info">
-            No matches found with the selected filter.
-        </div>
+    </div>
+    
+    {% if is_admin %}
+    </form>
     {% endif %}
 </div>
+
+{% if is_admin %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const masterCheckbox = document.getElementById('masterCheckbox');
+    const matchCheckboxes = document.querySelectorAll('.match-checkbox');
+    const selectedCount = document.getElementById('selectedCount');
+    const csvBtn = document.getElementById('csvBtn');
+    const txtBtn = document.getElementById('txtBtn');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    
+    // Update count and button states
+    function updateSelectedCount() {
+        const checked = document.querySelectorAll('.match-checkbox:checked').length;
+        selectedCount.textContent = checked + ' selected';
+        
+        // Enable/disable export buttons
+        csvBtn.disabled = checked === 0;
+        txtBtn.disabled = checked === 0;
+    }
+    
+    // Master checkbox behavior
+    if (masterCheckbox) {
+        masterCheckbox.addEventListener('change', function() {
+            matchCheckboxes.forEach(cb => {
+                cb.checked = masterCheckbox.checked;
+            });
+            updateSelectedCount();
+        });
+    }
+    
+    // Individual checkbox behavior
+    matchCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            // Update master checkbox if all individual ones are checked/unchecked
+            if (document.querySelectorAll('.match-checkbox:checked').length === matchCheckboxes.length) {
+                masterCheckbox.checked = true;
+            } else {
+                masterCheckbox.checked = false;
+            }
+            updateSelectedCount();
+        });
+    });
+    
+    // Select all button
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            matchCheckboxes.forEach(cb => {
+                cb.checked = true;
+            });
+            masterCheckbox.checked = true;
+            updateSelectedCount();
+        });
+    }
+    
+    // Deselect all button
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function() {
+            matchCheckboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            masterCheckbox.checked = false;
+            updateSelectedCount();
+        });
+    }
+    
+    // Initialize count
+    updateSelectedCount();
+});
+</script>
+{% endblock %}
+{% endif %}
 {% endblock %}

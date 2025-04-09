@@ -4,6 +4,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.contrib import messages
 from django.http import HttpResponseRedirect
+import csv
+from django.http import HttpResponse
+import datetime
 
 from .models import Match, MatchScore
 from .forms import MatchScoreForm
@@ -28,6 +31,144 @@ class MatchListView(ListView):
         if status_filter:
             queryset = queryset.filter(status=status_filter.upper())
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['status_choices'] = Match.STATUS_CHOICES
+        context['status_filter'] = self.request.GET.get('status', None)
+        
+        # Add a flag to indicate if the user is an admin
+        context['is_admin'] = self.request.user.is_authenticated and self.request.user.is_admin()
+        
+        return context
+
+# Add these functions after the class definitions
+
+def export_matches_csv(request):
+    if not request.user.is_authenticated or not request.user.is_admin():
+        messages.error(request, "You don't have permission to export matches.")
+        return redirect('matches:match_list')  # Change this if needed to match your actual URL name
+    
+    # Get selected match IDs from POST data
+    match_ids = request.POST.getlist('match_ids')
+    if not match_ids:
+        messages.error(request, "No matches selected for export.")
+        return redirect('matches:match_list')  # Change this if needed
+    
+    
+    queryset = Match.objects.filter(id__in=match_ids)
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename=matches-{datetime.date.today().isoformat()}.csv'
+    
+    writer = csv.writer(response)
+    # Write header row
+    writer.writerow([
+        'Match ID', 'Tournament', 'Round', 'Player 1', 'Player 2',
+        'Status', 'Scheduled Time', 'Court', 'Referee',
+        'Set 1', 'Set 2', 'Set 3', 'Winner'
+    ])
+    
+    # Write data rows
+    for match in queryset:
+        # Get score info if available
+        set1_score = set2_score = set3_score = winner_name = "N/A"
+        try:
+            if hasattr(match, 'score'):
+                score = match.score
+                if score.player1_set1 is not None and score.player2_set1 is not None:
+                    set1_score = f"{score.player1_set1}-{score.player2_set1}"
+                if score.player1_set2 is not None and score.player2_set2 is not None:
+                    set2_score = f"{score.player1_set2}-{score.player2_set2}"
+                if score.player1_set3 is not None and score.player2_set3 is not None:
+                    set3_score = f"{score.player1_set3}-{score.player2_set3}"
+                if score.winner:
+                    winner_name = score.winner.get_full_name()
+        except Match.score.RelatedObjectDoesNotExist:
+            pass
+        
+        writer.writerow([
+            match.id,
+            match.tournament.name if match.tournament else "N/A",
+            f"Round {match.round_number}" if match.round_number else "Unknown Round",
+            match.player1.get_full_name() if match.player1 else "TBD",
+            match.player2.get_full_name() if match.player2 else "TBD",
+            match.get_status_display(),
+            match.scheduled_time.strftime('%Y-%m-%d %H:%M') if match.scheduled_time else "Not scheduled",
+            match.court_number or "Not assigned",
+            match.referee.user.get_full_name() if match.referee and match.referee.user else "Not assigned",
+            set1_score,
+            set2_score,
+            set3_score,
+            winner_name
+        ])
+    
+    return response
+
+def export_matches_txt(request):
+    if not request.user.is_authenticated or not request.user.is_admin():
+        messages.error(request, "You don't have permission to export matches.")
+        return redirect('matches:match_list')  # Change this if needed
+    
+    # Get selected match IDs from POST data
+    match_ids = request.POST.getlist('match_ids')
+    if not match_ids:
+        messages.error(request, "No matches selected for export.")
+        return redirect('matches:match_list')  # Change this if needed
+    
+    
+    queryset = Match.objects.filter(id__in=match_ids)
+    
+    response = HttpResponse(content_type='text/plain')
+    response['Content-Disposition'] = f'attachment; filename=matches-{datetime.date.today().isoformat()}.txt'
+    
+    # Write header
+    response.write("TENNIS TOURNAMENT - MATCH EXPORT\n")
+    response.write(f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    response.write(f"Number of matches: {queryset.count()}\n")
+    response.write("=" * 80 + "\n\n")
+    
+    # Write data for each match
+    for match in queryset:
+        response.write(f"MATCH ID: {match.id}\n")
+        response.write(f"Tournament: {match.tournament.name if match.tournament else 'N/A'}\n")
+        response.write(f"Round: {f'Round {match.round_number}' if match.round_number else 'Unknown Round'}\n")
+        response.write(f"Status: {match.get_status_display()}\n")
+        
+        response.write(f"Player 1: {match.player1.get_full_name() if match.player1 else 'TBD'}\n")
+        response.write(f"Player 2: {match.player2.get_full_name() if match.player2 else 'TBD'}\n")
+        
+        if match.scheduled_time:
+            response.write(f"Scheduled Time: {match.scheduled_time.strftime('%Y-%m-%d %H:%M')}\n")
+        
+        if match.court_number:
+            response.write(f"Court: {match.court_number}\n")
+            
+        if match.referee and match.referee.user:
+            response.write(f"Referee: {match.referee.user.get_full_name()}\n")
+        
+        # Add score information
+        response.write("Score:\n")
+        try:
+            if hasattr(match, 'score'):
+                score = match.score
+                if score.player1_set1 is not None and score.player2_set1 is not None:
+                    response.write(f"  Set 1: {score.player1_set1}-{score.player2_set1}\n")
+                if score.player1_set2 is not None and score.player2_set2 is not None:
+                    response.write(f"  Set 2: {score.player1_set2}-{score.player2_set2}\n")
+                if score.player1_set3 is not None and score.player2_set3 is not None:
+                    response.write(f"  Set 3: {score.player1_set3}-{score.player2_set3}\n")
+                
+                if score.winner:
+                    response.write(f"Winner: {score.winner.get_full_name()}\n")
+            else:
+                response.write("  No score recorded\n")
+        except Match.score.RelatedObjectDoesNotExist:
+            response.write("  No score recorded\n")
+        
+        response.write("\n" + "-" * 40 + "\n\n")
+    
+    return response
 
 class MatchDetailView(DetailView):
     model = Match
