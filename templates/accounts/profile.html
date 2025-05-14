@@ -140,6 +140,21 @@
                         </ul>
                     </div>
                 </div>
+                {% if referee_profile %}
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Referee Tools</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'matches:player_filter' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-filter"></i> Filter Players
+                            </a>
+                            <!-- Add other referee tools here -->
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             {% endif %}
             
             <!-- Admin dashboard links -->

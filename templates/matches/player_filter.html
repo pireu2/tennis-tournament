@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Player Filter{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Player Filter</h4>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Player Name</label>
+                                <input type="text" name="name" class="form-control" value="{{ name_filter }}" placeholder="Search by name">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Skill Level</label>
+                                <select name="skill_level" class="form-select">
+                                    <option value="">All Levels</option>
+                                    {% for value, label in skill_choices %}
+                                        <option value="{{ value }}" {% if skill_filter == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Gender</label>
+                                <select name="gender" class="form-select">
+                                    <option value="">All</option>
+                                    <option value="M" {% if gender_filter == "M" %}selected{% endif %}>Male</option>
+                                    <option value="F" {% if gender_filter == "F" %}selected{% endif %}>Female</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tournament</label>
+                                <select name="tournament" class="form-select">
+                                    <option value="">All Tournaments</option>
+                                    {% for tournament in tournaments %}
+                                        <option value="{{ tournament.id }}" {% if tournament_filter == tournament.id|stringformat:"i" %}selected{% endif %}>{{ tournament.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Match Status</label>
+                                <select name="match_status" class="form-select">
+                                    <option value="">All</option>
+                                    <option value="won" {% if match_status == "won" %}selected{% endif %}>Won Matches</option>
+                                    <option value="lost" {% if match_status == "lost" %}selected{% endif %}>Lost Matches</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                                <a href="{% url 'matches:player_filter' %}" class="btn btn-secondary ms-2">Reset</a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Skill Level</th>
+                                    <th>Gender</th>
+                                    <th>Matches Played</th>
+                                    <th>Matches Won</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in players %}
+                                <tr>
+                                    <td>{{ player.get_full_name }}</td>
+                                    <td>{{ player.username }}</td>
+                                    <td>{% if player.tennis_player.skill_level %}{{ player.tennis_player.get_skill_level_display }}{% else %}N/A{% endif %}</td>
+                                    <td>{% if player.tennis_player.gender %}{{ player.tennis_player.get_gender_display }}{% else %}N/A{% endif %}</td>
+                                    <td>{{ player.matches_as_player1.count|add:player.matches_as_player2.count }}</td>
+                                    <td>{{ player.matches_won.count }}</td>
+                                    <td>
+                                        <a href="{% url 'accounts:profile' %}" class="btn btn-sm btn-info">View Profile</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No players found matching your criteria</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

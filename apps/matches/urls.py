@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:pk>/update-score/', views.UpdateScoreView.as_view(), name='update_score'),
     path('export/csv/', views.export_matches_csv, name='export_csv'),
     path('export/txt/', views.export_matches_txt, name='export_txt'),
+    path('players/filter/', views.PlayerFilterView.as_view(), name='player_filter'),
 ]

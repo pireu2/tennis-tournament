@@ -22,7 +22,8 @@ class Tournament(models.Model):
     location = models.CharField(max_length=100, blank=False, null=False)
     organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tournaments', null=False)
     participants = models.ManyToManyField(User, related_name='tournaments_participated', blank=True)
-
+    pending_registrations = models.ManyToManyField(User, related_name='pending_tournament_registrations', blank=True)
+    
     registration_deadline = models.DateField(null=True, blank=True)
     max_participants = models.PositiveIntegerField(default=32)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='UPCOMING')

@@ -16,7 +16,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
-                    <li class="nav-item dropdown">
+                        <li class="nav-item dropdown">
                             <a class="nav-link position-relative" href="{% url 'notifications:list' %}">
                                 <i class="bi bi-bell"></i> Notifications
                                 {% if unread_notification_count > 0 %}
@@ -27,19 +27,38 @@
                                 {% endif %}
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'accounts:profile' %}">Hello, {{ user.username }}</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'accounts:logout' %}">Logout</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">My Profile</a></li>
+                                
+                                {% if user.is_admin %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'accounts:admin_user_list' %}">Manage Users</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'tournaments:tournament_list' %}">Manage Tournaments</a></li>
+                                {% endif %}
+                                
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">Logout</a></li>
+                            </ul>
                         </li>
                     {% else %}
-                        <li class="nav-item">
+                        <li class="nav-item"></li>
                             <a class="nav-link" href="{% url 'accounts:register' %}">Register</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'accounts:login' %}">Login</a>
                         </li>
+                    {% endif %}
+                    
+                    {% if user.is_authenticated and user.is_referee %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'matches:player_filter' %}">
+                            <i class="fas fa-filter"></i> Player Filter
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
             </div>

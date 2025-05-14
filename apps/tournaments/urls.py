@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:pk>/register/', views.PlayerRegistrationView.as_view(), name='tournament_register'),
     path('<int:pk>/generate-matches/', views.GenerateMatchesView.as_view(), name='generate_matches'),
     path('<int:tournament_id>/matches/', views.TournamentMatchesView.as_view(), name='tournament_matches'),
+    path('<int:pk>/approve-registration/', views.ApproveRegistrationView.as_view(), name='approve_registration'),
 ]

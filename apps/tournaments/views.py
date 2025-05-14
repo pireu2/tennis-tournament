@@ -18,6 +18,7 @@ from core.strategies.match_generator import (
     RoundRobinStrategy
 )
 from core.observers import TournamentNotificationSubject, EmailNotifier, DatabaseNotifier
+from core.mixins import PlayerRequiredMixin, RefereeRequiredMixin, OwnershipRequiredMixin
 
 # Set up the notification system
 tournament_notifier = TournamentNotificationSubject()
@@ -68,7 +69,7 @@ class TournamentCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
         messages.success(self.request, "Tournament created successfully!")
         return response
 
-class TournamentDetailView(DetailView):
+class TournamentDetailView(LoginRequiredMixin, DetailView):
     model = Tournament
     template_name = 'tournaments/tournament_detail.html'
     context_object_name = 'tournament'
@@ -76,21 +77,29 @@ class TournamentDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         tournament = self.get_object()
-        
-        # Check if user is registered
         user = self.request.user
-        if user.is_authenticated:
-            context['is_registered'] = tournament.participants.filter(id=user.id).exists()
-            context['is_admin'] = user.is_admin()
-            context['is_player'] = user.is_player()
-            context['is_referee'] = user.is_referee()
         
-        # Get participants count
-        context['participants_count'] = tournament.participants.count()
-        context['spots_left'] = tournament.max_participants - tournament.participants.count()
+        # Check if user is registered in this tournament
+        context['is_registered'] = tournament.participants.filter(id=user.id).exists()
+        context['is_pending'] = tournament.pending_registrations.filter(id=user.id).exists()
         
-        # Get matches
-        context['matches'] = Match.objects.filter(tournament=tournament).order_by('round_number', 'id')
+        # Check user type for showing appropriate data
+        context['is_player'] = user.is_player()
+        context['is_admin'] = user.is_admin()
+        context['is_referee'] = user.is_referee()
+        
+        # Only allow tournament organizer or admins to see pending registrations
+        if user.is_admin() and (user == tournament.organizer or user.is_superuser):
+            context['pending_players'] = tournament.pending_registrations.all()
+        
+        # Get matches that user has access to
+        match_filter = {}
+        if not (user.is_admin() or user.is_referee() or 
+                tournament.participants.filter(id=user.id).exists()):
+            # Users not involved can only see published matches
+            match_filter['status'] = 'COMPLETED'
+            
+        context['tournament_matches'] = tournament.matches.filter(**match_filter)
         
         return context
 
@@ -106,7 +115,7 @@ class TournamentUpdateView(LoginRequiredMixin, AdminRequiredMixin, UpdateView):
         messages.success(self.request, "Tournament updated successfully!")
         return super().form_valid(form)
 
-class PlayerRegistrationView(LoginRequiredMixin, View):
+class PlayerRegistrationView(LoginRequiredMixin, PlayerRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         tournament = get_object_or_404(Tournament, pk=kwargs['pk'])
         
@@ -125,14 +134,20 @@ class PlayerRegistrationView(LoginRequiredMixin, View):
             messages.error(request, "Tournament has reached maximum number of participants.")
             return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament.pk}))
         
-        # Check if user is already registered
+        # Check if user is already registered or has pending registration
         if tournament.participants.filter(id=request.user.id).exists():
             tournament.participants.remove(request.user)
             messages.success(request, "You have been unregistered from the tournament.")
+        elif tournament.pending_registrations.filter(id=request.user.id).exists():
+            tournament.pending_registrations.remove(request.user)
+            messages.success(request, "Your registration request has been withdrawn.")
         else:
-            tournament.participants.add(request.user)
-            messages.success(request, "You have successfully registered for the tournament.")
-            tournament_notifier.player_registered(tournament, request.user)
+            # Add to pending registrations instead of directly to participants
+            tournament.pending_registrations.add(request.user)
+            messages.success(request, "Your registration request has been submitted and is pending approval.")
+            
+            # Notify tournament organizer about the pending approval
+            tournament_notifier.player_registration_needs_approval(tournament, request.user)
         
         return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament.pk}))
 
@@ -216,3 +231,103 @@ class UpdateTournamentStatusView(LoginRequiredMixin, View):
             messages.error(request, "Invalid tournament status.")
             
         return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament.pk}))
+    
+
+
+from django.http import JsonResponse
+
+
+class ApproveRegistrationView(LoginRequiredMixin, AdminRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        tournament_id = kwargs.get('pk')
+        player_id = request.POST.get('player_id')
+        action = request.POST.get('action')  # 'approve' or 'reject'
+        
+        tournament = get_object_or_404(Tournament, pk=tournament_id)
+        
+        if request.user != tournament.organizer and not request.user.is_superuser:
+            messages.error(request, "Only the tournament organizer can approve registrations.")
+            return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament_id}))
+        
+        try:
+            from apps.accounts.models import User
+            player = User.objects.get(pk=player_id)
+            
+            if action == 'approve':
+                # Add player to tournament participants
+                tournament.participants.add(player)
+                # Add this after getting the player object
+                tournament.pending_registrations.remove(player)
+                
+                # Notify the player that their registration was approved
+                from apps.notifications.models import Notification
+                Notification.objects.create(
+                    user=player,
+                    message=f"Your registration for '{tournament.name}' has been approved",
+                    notification_type='TOURNAMENT',
+                    related_id=tournament.id
+                )
+                
+                # Send email notification
+                tournament_notifier.player_registered(tournament, player)
+                
+                messages.success(request, f"Registration for {player.get_full_name()} has been approved.")
+                
+            elif action == 'reject':
+                # Just remove from pending registrations without adding to participants
+                tournament.pending_registrations.remove(player)
+                messages.info(request, f"Registration for {player.get_full_name()} has been rejected.")
+                
+                # Notify the player that their registration was rejected
+                notify_player_of_rejection(tournament, player)
+            
+            # Remove the approval notification for the organizer
+            from apps.notifications.models import Notification
+            Notification.objects.filter(
+                user=tournament.organizer,
+                notification_type='REGISTRATION_APPROVAL',
+                related_id=tournament.id,
+                message__contains=player.get_full_name()
+            ).delete()
+            
+            # Fix: Replace is_ajax() with the modern way
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
+                
+            return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament_id}))
+            
+        except User.DoesNotExist:
+            messages.error(request, "Player not found.")
+            
+        except Exception as e:
+            messages.error(request, f"Error processing registration: {str(e)}")
+        
+        # Add this check for AJAX requests at the end too
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False}, status=400)
+            
+        return HttpResponseRedirect(reverse('tournaments:tournament_detail', kwargs={'pk': tournament_id}))
+
+def notify_player_of_rejection(tournament, player):
+    """Notify player that their registration was rejected"""
+    try:
+        # Create a notification for the player
+        Notification.objects.create(
+            user=player,
+            title="Tournament Registration Rejected",
+            message=f"Your registration for {tournament.name} has been rejected.",
+            notification_type='REGISTRATION_REJECTED'
+        )
+        
+        # Optionally send an email if player has an email address
+        if player.email:
+            send_mail(
+                f"Registration Rejected: {tournament.name}",
+                f"Dear {player.get_full_name() or player.username},\n\nYour registration for the tournament '{tournament.name}' has been rejected.\n\nThank you.",
+                settings.DEFAULT_FROM_EMAIL,
+                [player.email],
+                fail_silently=True,
+            )
+    except Exception:
+        # Log the error but don't stop execution
+        logger.exception("Failed to notify player of rejection")

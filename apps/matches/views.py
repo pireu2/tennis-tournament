@@ -3,15 +3,18 @@ from django.views.generic import ListView, DetailView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.contrib import messages
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 import csv
 from django.http import HttpResponse
 import datetime
+from django.db.models import Q, F
+from django.contrib.auth import get_user_model
 
 from .models import Match, MatchScore
 from .forms import MatchScoreForm
 
 from core.observers import TournamentNotificationSubject, EmailNotifier, DatabaseNotifier
+from core.mixins import PlayerRequiredMixin, RefereeRequiredMixin
 
 tournament_notifier = TournamentNotificationSubject()
 email_observer = EmailNotifier()
@@ -41,8 +44,6 @@ class MatchListView(ListView):
         context['is_admin'] = self.request.user.is_authenticated and self.request.user.is_admin()
         
         return context
-
-# Add these functions after the class definitions
 
 def export_matches_csv(request):
     if not request.user.is_authenticated or not request.user.is_admin():
@@ -170,38 +171,48 @@ def export_matches_txt(request):
     
     return response
 
-class MatchDetailView(DetailView):
+class MatchDetailView(LoginRequiredMixin, DetailView):
     model = Match
     template_name = 'matches/match_detail.html'
     context_object_name = 'match'
     
+    def get_object(self, queryset=None):
+        match = super().get_object(queryset)
+        user = self.request.user
+        
+        # Check permissions to see the match
+        is_participant = user == match.player1 or user == match.player2
+        is_referee = user.is_referee() and (match.referee is None or match.referee.user == user)
+        is_tournament_admin = user.is_admin() and (user == match.tournament.organizer or user.is_superuser)
+        
+        # For non-completed matches, only participants, referees, and admins should see
+        if match.status != 'COMPLETED' and not (is_participant or is_referee or is_tournament_admin):
+            raise Http404("Match not found")
+            
+        return match
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         match = self.get_object()
-        
         user = self.request.user
-        if user.is_authenticated and user.is_referee():
-            if hasattr(match, 'referee') and match.referee and match.referee.user == user:
-                # Check if the match has a score
-                try:
-                    # Try to get the score instance
-                    score_instance = match.score
-                    context['score_form'] = MatchScoreForm(instance=score_instance)
-                except match._meta.model.score.RelatedObjectDoesNotExist:
-                    # If no score record exists yet, provide an empty form
-                    context['score_form'] = MatchScoreForm()
         
-        # Check if user is the referee
-        if user.is_authenticated and user.is_referee():
-            context['is_referee'] = True
-            if hasattr(match, 'referee') and match.referee:
-                context['is_match_referee'] = match.referee.user == user
-            else:
-                context['is_match_referee'] = False
+        # Add user-specific context
+        context['is_player'] = user.is_player()
+        context['is_referee'] = user.is_referee()
+        context['is_admin'] = user.is_admin()
         
+        # Check if user is a participant in this match
+        context['is_participant'] = user == match.player1 or user == match.player2
+        
+        # Check if user is the referee of this match
+        if match.referee:
+            context['is_match_referee'] = user == match.referee.user
+        else:
+            context['is_match_referee'] = False
+            
         return context
 
-class RefereeSignupView(LoginRequiredMixin, View):
+class RefereeSignupView(LoginRequiredMixin, RefereeRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         match = get_object_or_404(Match, pk=kwargs['pk'])
         
@@ -352,3 +363,81 @@ class UpdateScoreView(LoginRequiredMixin, View):
                 
                 # Create empty score object
                 MatchScore.objects.create(match=new_match)
+
+class PlayerFilterView(LoginRequiredMixin, RefereeRequiredMixin, ListView):
+    model = get_user_model()
+    template_name = 'matches/player_filter.html'
+    context_object_name = 'players'
+    
+    def get_queryset(self):
+        User = get_user_model()
+        queryset = User.objects.filter(is_active=True)
+        
+        # Only get users who are players
+        queryset = queryset.filter(tennis_player__isnull=False)
+        
+        # Apply filters based on GET parameters
+        name_filter = self.request.GET.get('name', '')
+        if name_filter:
+            queryset = queryset.filter(
+                Q(username__icontains=name_filter) | 
+                Q(first_name__icontains=name_filter) | 
+                Q(last_name__icontains=name_filter)
+            )
+            
+        # Filter by skill level if provided
+        skill_filter = self.request.GET.get('skill_level', '')
+        if skill_filter:
+            queryset = queryset.filter(tennis_player__skill_level=skill_filter)
+            
+        # Filter by gender if provided
+        gender_filter = self.request.GET.get('gender', '')
+        if gender_filter:
+            queryset = queryset.filter(tennis_player__gender=gender_filter)
+            
+        # Filter by tournament participation
+        tournament_filter = self.request.GET.get('tournament', '')
+        if tournament_filter:
+            try:
+                # Convert to int to ensure proper query comparison
+                tournament_id = int(tournament_filter)
+                # Include both active participants and pending registrations
+                queryset = queryset.filter(
+                    Q(tournaments_participated=tournament_id) | 
+                    Q(pending_tournament_registrations=tournament_id)
+                )
+            except ValueError:
+                # If conversion fails, just continue without this filter
+                pass
+            
+        # Filter by match status (won/lost)
+        match_status = self.request.GET.get('match_status', '')
+        if match_status == 'won':
+            # Filter users who have won matches
+            queryset = queryset.filter(matches_won__isnull=False)
+        elif match_status == 'lost':
+            # Filter users who have matches but not in their won matches
+            queryset = queryset.filter(
+                Q(matches_as_player1__isnull=False) | Q(matches_as_player2__isnull=False)
+            ).exclude(id__in=User.objects.filter(matches_won__isnull=False))
+            
+        return queryset.distinct()
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add filter values to context
+        context['name_filter'] = self.request.GET.get('name', '')
+        context['skill_filter'] = self.request.GET.get('skill_level', '')
+        context['gender_filter'] = self.request.GET.get('gender', '')
+        context['tournament_filter'] = self.request.GET.get('tournament', '')
+        context['match_status'] = self.request.GET.get('match_status', '')
+        
+        # Add available choices for dropdown filters
+        from apps.accounts.models import TennisPlayer as Player
+        if hasattr(Player, 'SKILL_LEVELS'):
+            context['skill_choices'] = Player.SKILL_LEVELS
+        
+        from apps.tournaments.models import Tournament
+        context['tournaments'] = Tournament.objects.all()
+        
+        return context

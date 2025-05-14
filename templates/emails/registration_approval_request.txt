@@ -1,0 +1,21 @@
+Hello {{ tournament.organizer.first_name }},
+
+A player has requested to join your tournament "{{ tournament.name }}" and requires your approval.
+
+Player Details:
+- Name: {{ player.get_full_name }}
+- Email: {{ player.email }}
+{% if player.is_player %}
+- Ranking: {{ player.tennis_player.ranking|default:"Not specified" }}
+{% endif %}
+
+Current Registration Stats:
+- Pending Registrations: {{ tournament.pending_registrations.count }}
+- Approved Registrations: {{ tournament.participants.count }}
+- Maximum Capacity: {{ tournament.max_participants }}
+
+Please review this registration request at:
+{{ approval_url }}
+
+Thank you,
+Tennis Tournament Management System

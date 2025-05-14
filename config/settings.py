@@ -54,6 +54,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
+    "core.middleware.AuthenticationMiddleware",  # Add our custom middleware
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -86,6 +87,8 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+
+SITE_URL = "http://127.0.0.1:8000"
 
 
 # Password validation
@@ -130,3 +133,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# Add login URL and exempt URLs
+LOGIN_URL = 'accounts:login'
+LOGIN_EXEMPT_URLS = [
+    'accounts/login/',
+    'accounts/register/',
+    'accounts/register/player/',
+    'accounts/register/referee/',
+    'accounts/register/admin/',
+    '',  # Home page
+]

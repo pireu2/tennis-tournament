@@ -1,2 +1,5 @@
 django
 django-browser-reload
+pytest
+pytest-django
+coverage

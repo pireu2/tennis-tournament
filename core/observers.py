@@ -75,6 +75,14 @@ class TournamentNotificationSubject(Subject):
             match=match
         )
 
+    def player_registration_needs_approval(self, tournament, player):
+        """Notify observers when a player registration needs approval"""
+        self.notify(
+            event_type='registration_needs_approval',
+            tournament=tournament,
+            player=player
+        )
+
 
 class EmailNotifier(Observer):
     """Email notification observer"""
@@ -93,6 +101,9 @@ class EmailNotifier(Observer):
             self._notify_match_scheduled(kwargs.get('match'))
         elif event_type == 'match_result':
             self._notify_match_result(kwargs.get('match'))
+        elif event_type == 'registration_needs_approval':
+            self._notify_registration_needs_approval(kwargs.get('tournament'), kwargs.get('player'))
+    
     
     def _notify_tournament_status_change(self, tournament):
         """Notify relevant users about tournament status changes"""
@@ -228,6 +239,22 @@ class EmailNotifier(Observer):
             import logging
             logging.error(f"Failed to send email notification: {str(e)}")
 
+    def _notify_registration_needs_approval(self, tournament, player):
+        """Notify organizer about a registration that needs approval"""
+        if not tournament or not player or not tournament.organizer:
+            return
+            
+        subject = f"Action Required: Registration Approval for {tournament.name}"
+        context = {
+            'tournament': tournament,
+            'player': player,
+            'approval_url': f"{settings.SITE_URL}/tournaments/{tournament.id}/registrations/"
+        }
+        
+        if tournament.organizer.email:
+            message = render_to_string('emails/registration_approval_request.txt', context)
+            self._send_email(subject, message, [tournament.organizer.email])
+
 
 class DatabaseNotifier(Observer):
     """Stores notifications in the database for in-app notifications"""
@@ -333,3 +360,26 @@ class DatabaseNotifier(Observer):
                         notification_type='MATCH',
                         related_id=match.id
                     )
+        
+        elif event_type == 'registration_needs_approval':
+            tournament = kwargs.get('tournament')
+            player = kwargs.get('player')
+            
+            if tournament and player and tournament.organizer:
+                # Create notification for the organizer
+                Notification.objects.create(
+                    user=tournament.organizer,
+                    message=f"ACTION REQUIRED: {player.get_full_name()} has requested to join '{tournament.name}'",
+                    notification_type='REGISTRATION_APPROVAL',
+                    related_id=tournament.id,
+                    is_read=False,
+                    requires_action=True
+                )
+                
+                # Create a "pending approval" notification for the player
+                Notification.objects.create(
+                    user=player,
+                    message=f"Your registration for '{tournament.name}' is pending approval",
+                    notification_type='TOURNAMENT',
+                    related_id=tournament.id
+                )

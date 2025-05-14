@@ -26,9 +26,6 @@ Score:
 
 Winner: {{ winner.get_full_name }}
 
-Tournament Progress:
-- Completed Matches: {{ tournament.match_set.filter(status='COMPLETED').count }}
-- Remaining Matches: {{ tournament.match_set.exclude(status='COMPLETED').count }}
 
 You can view complete tournament progress at:
 https://127.0.0.1:8000/tournaments/{{ tournament.id }}/

@@ -84,26 +84,7 @@
                     </ul>
                 </div>
                 <div class="card-footer">
-                    {% if user.is_authenticated and is_player %}
-                        {% if is_registered %}
-                            <form method="post" action="{% url 'tournaments:tournament_register' tournament.id %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger">Withdraw Registration</button>
-                            </form>
-                        {% elif tournament.is_registration_open %}
-                            <form method="post" action="{% url 'tournaments:tournament_register' tournament.id %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-success" {% if spots_left <= 0 %}disabled{% endif %}>
-                                    Register for Tournament
-                                </button>
-                            </form>
-                            {% if spots_left <= 0 %}
-                                <small class="text-danger">Tournament is full</small>
-                            {% endif %}
-                        {% else %}
-                            <button class="btn btn-secondary" disabled>Registration Closed</button>
-                        {% endif %}
-                    {% endif %}
+                    
                     
                     {% if user.is_authenticated and is_admin and tournament.can_generate_matches and not matches %}
                         <form method="post" action="{% url 'tournaments:generate_matches' tournament.id %}" class="mt-2">
@@ -221,6 +202,196 @@
                     {% endif %}
                 </div>
             </div>
+
+{% if user.is_authenticated and is_organizer and pending_registrations %}
+<div class="card mt-4">
+    <div class="card-header bg-warning text-dark">
+        <h4 class="mb-0">Pending Registration Requests ({{ pending_count }})</h4>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Ranking</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in pending_registrations %}
+                    <tr>
+                        <td>{{ player.get_full_name|default:player.username }}</td>
+                        <td>{% if player.tennis_player %}{{ player.tennis_player.ranking|default:"N/A" }}{% else %}N/A{% endif %}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <form method="post" action="{% url 'tournaments:approve_registration' tournament.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="player_id" value="{{ player.id }}">
+                                    <input type="hidden" name="action" value="approve">
+                                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                </form>
+                                <form method="post" action="{% url 'tournaments:approve_registration' tournament.id %}" class="d-inline ml-2">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="player_id" value="{{ player.id }}">
+                                    <input type="hidden" name="action" value="reject">
+                                    <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Pending registrations section (only visible to tournament admin) -->
+{% if is_tournament_admin and tournament.status == 'REGISTRATION' %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">Pending Registration Requests</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_registrations %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Skill Level</th>
+                                <th>Registration Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for registration in pending_registrations %}
+                                <tr>
+                                    <td>{{ registration.user.get_full_name|default:registration.user.username }}</td>
+                                    <td>
+                                        {% if registration.user.tennis_player %}
+                                            {{ registration.user.tennis_player.get_skill_level_display }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ registration.created_at|date:"F d, Y" }}</td>
+                                    <td>
+                                        <div class="d-flex">
+                                            <form method="post" action="{% url 'tournaments:approve_registration' tournament.id %}" class="me-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="player_id" value="{{ registration.user.id }}">
+                                                <input type="hidden" name="action" value="approve">
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form method="post" action="{% url 'tournaments:approve_registration' tournament.id %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="player_id" value="{{ registration.user.id }}">
+                                                <input type="hidden" name="action" value="reject">
+                                                <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">There are no pending registration requests.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+<!-- Update the registration button section -->
+{% if user.is_authenticated and is_player %}
+    {% if is_registered %}
+        <form method="post" action="{% url 'tournaments:tournament_register' tournament.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Withdraw Registration</button>
+        </form>
+    {% elif is_pending %}
+        <form method="post" action="{% url 'tournaments:tournament_register' tournament.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary">Withdraw Registration Request</button>
+        </form>
+        <p class="text-muted mt-2"><small>Your registration is pending approval from the tournament organizer.</small></p>
+    {% elif tournament.is_registration_open %}
+        <form method="post" action="{% url 'tournaments:tournament_register' tournament.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Register for Tournament</button>
+        </form>
+    {% endif %}
+{% endif %}
+
+<!-- Only show registration approval to admins who are tournament organizers -->
+{% if user.is_authenticated and is_admin and user == tournament.organizer %}
+    <!-- Pending registrations section -->
+    {% if pending_players %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Pending Registrations</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Skill Level</th>
+                                <th>Registration Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in pending_players %}
+                                <tr>
+                                    <td>{{ player.get_full_name|default:player.username }}</td>
+                                    <td>
+                                        {% if player.tennis_player %}
+                                            {{ player.tennis_player.get_skill_level_display }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for reg in player.pending_tournament_registrations.all %}
+                                            {% if reg.tournament.id == tournament.id %}
+                                                {{ reg.created_at|date:"F d, Y" }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex">
+                                            <form method="post" action="{% url 'tournaments:approve_registration' tournament.id %}" class="me-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="player_id" value="{{ player.id }}">
+                                                <input type="hidden" name="action" value="approve">
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form method="post" action="{% url 'tournaments:approve_registration' tournament.id %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="player_id" value="{{ player.id }}">
+                                                <input type="hidden" name="action" value="reject">
+                                                <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
+
+
+
         </div>
     </div>
 </div>

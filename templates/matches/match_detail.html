@@ -1,12 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}Match Detail{% endblock %}
+{% block title %}Match Details{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
+    <!-- Match header section -->
     <div class="row mb-4">
         <div class="col-md-8">
             <h2>Match Details</h2>
+            <h5 class="text-muted">{{ match.tournament.name }} - Round {{ match.round_number }}</h5>
         </div>
         <div class="col-md-4 text-end">
             <a href="{% url 'tournaments:tournament_detail' match.tournament.id %}" class="btn btn-outline-secondary">
@@ -15,322 +17,173 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary text-white{% elif match.is_completed %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
-                    <h4 class="mb-0">Match Information</h4>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-3">
-                        <div class="text-center flex-grow-1">
-                            <h5>{{ match.player1.get_full_name|default:match.player1.username }}</h5>
-                            {% if match.player1.tennis_player %}
-                                <span class="badge bg-primary">Ranking: {{ match.player1.tennis_player.ranking }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="align-self-center">
-                            <h4 class="mb-0">vs</h4>
-                        </div>
-                        <div class="text-center flex-grow-1">
-                            <h5>{{ match.player2.get_full_name|default:match.player2.username }}</h5>
-                            {% if match.player2.tennis_player %}
-                                <span class="badge bg-primary">Ranking: {{ match.player2.tennis_player.ranking }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
+    <!-- Alert messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
 
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <strong>Tournament:</strong>
-                                <a href="{% url 'tournaments:tournament_detail' match.tournament.id %}">{{ match.tournament.name }}</a>
-                            </div>
+    <!-- Match information card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Match Information</h5>
+        </div>
+        <div class="card-body">
+            <!-- Match status indicator -->
+            <div class="mb-3">
+                <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% elif match.is_completed %}bg-success{% else %}bg-secondary{% endif %} p-2">
+                    {{ match.get_status_display }}
+                </span>
+            </div>
+
+            <!-- Players information -->
+            <div class="row mb-4">
+                <div class="col-md-5 text-center">
+                    <h5>
+                        <a href="{% url 'accounts:player_profile' match.player1.id %}" class="text-decoration-none">
+                            {{ match.player1.get_full_name|default:match.player1.username }}
+                        </a>
+                    </h5>
+                    {% if match.is_completed and match.get_winner == match.player1 %}
+                        <span class="badge bg-success">Winner</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-2 text-center">
+                    <h5>VS</h5>
+                </div>
+                <div class="col-md-5 text-center">
+                    <h5>
+                        <a href="{% url 'accounts:player_profile' match.player2.id %}" class="text-decoration-none">
+                            {{ match.player2.get_full_name|default:match.player2.username }}
+                        </a>
+                    </h5>
+                    {% if match.is_completed and match.get_winner == match.player2 %}
+                        <span class="badge bg-success">Winner</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Match details -->
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Match Details</h6>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Tournament:</span>
+                            <span>{{ match.tournament.name }}</span>
                         </li>
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <strong>Round:</strong>
-                                <span>{{ match.round_number }}</span>
-                            </div>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Round:</span>
+                            <span>{{ match.round_number }}</span>
                         </li>
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <strong>Status:</strong>
-                                <span class="badge {% if match.is_scheduled %}bg-warning{% elif match.is_in_progress %}bg-primary{% elif match.is_completed %}bg-success{% else %}bg-secondary{% endif %}">
-                                    {{ match.get_status_display }}
-                                </span>
-                            </div>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Status:</span>
+                            <span>{{ match.get_status_display }}</span>
                         </li>
-                        {% if match.court_number %}
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between">
-                                    <strong>Court:</strong>
-                                    <span>{{ match.court_number }}</span>
-                                </div>
+                        {% if match.referee %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Referee:</span>
+                                <span>{{ match.referee.user.get_full_name|default:match.referee.user.username }}</span>
                             </li>
                         {% endif %}
-                        {% if match.scheduled_time %}
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between">
-                                    <strong>Scheduled Time:</strong>
-                                    <span>{{ match.scheduled_time|date:"F d, Y H:i" }}</span>
-                                </div>
+                        {% if match.is_scheduled or match.is_in_progress or match.is_completed %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Scheduled Time:</span>
+                                <span>{{ match.scheduled_time|date:"F d, Y - H:i" }}</span>
                             </li>
                         {% endif %}
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <strong>Referee:</strong>
-                                {% if match.referee %}
-                                    <span>{{ match.referee.user.get_full_name|default:match.referee.user.username }}</span>
-                                {% else %}
-                                    <span class="text-muted">Unassigned</span>
-                                {% endif %}
-                            </div>
-                        </li>
                     </ul>
                 </div>
-                <div class="card-footer">
-                    {% if user.is_authenticated and is_referee and not match.is_completed and not match.is_canceled %}
-                        <form method="post" action="{% url 'matches:referee_signup' match.id %}">
-                            {% csrf_token %}
-                            {% if is_match_referee %}
-                                <button type="submit" class="btn btn-danger">Unassign Me</button>
-                            {% elif not match.referee %}
-                                <button type="submit" class="btn btn-success">Sign Up as Referee</button>
-                            {% else %}
-                                <button type="submit" class="btn btn-secondary" disabled>Already Assigned</button>
-                            {% endif %}
-                        </form>
+                <div class="col-md-6">
+                    {% if match.is_completed %}
+                        <h6>Match Score</h6>
+                        <ul class="list-group">
+                            {% for score in match.scores.all %}
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Set {{ score.set_number }}</span>
+                                    <span>{{ score.player1_score }} - {{ score.player2_score }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
                     {% endif %}
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h4 class="mb-0">Match Score</h4>
+    <!-- Referee signup section - only for referees -->
+    {% if is_referee and not match.is_completed %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Referee Assignment</h5>
+            </div>
+            <div class="card-body">
+                {% if not match.referee %}
+                    <p>This match needs a referee. Would you like to officiate this match?</p>
+                    <form method="post" action="{% url 'matches:referee_signup' match.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Sign Up as Referee</button>
+                    </form>
+                {% elif is_match_referee %}
+                    <p>You are assigned as the referee for this match.</p>
+                    <form method="post" action="{% url 'matches:referee_signup' match.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Withdraw as Referee</button>
+                    </form>
+                {% else %}
+                    <p>This match already has a referee assigned: {{ match.referee.user.get_full_name|default:match.referee.user.username }}</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Referee tools section - only for referees -->
+    {% if is_referee %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Referee Tools</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-grid gap-2">
+                <a href="{% url 'matches:player_filter' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-filter"></i> Filter Players
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Score submission section - only for match referee or admins -->
+    {% if is_match_referee or is_admin %}
+        {% if match.is_scheduled or match.is_in_progress %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Score Submission</h5>
                 </div>
                 <div class="card-body">
-                    {% if match.score %}
-                        {% if match.get_winner %}
-                            <div class="alert alert-success">
-                                <strong>Winner:</strong> {{ match.get_winner.get_full_name|default:match.get_winner.username }}
-                            </div>
-                        {% endif %}
+                    <form method="post" action="{% url 'matches:submit_score' match.id %}">
+                        {% csrf_token %}
                         
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Player</th>
-                                        <th>Set 1</th>
-                                        <th>Set 2</th>
-                                        <th>Set 3</th>
-                                        <th>Set 4</th>
-                                        <th>Set 5</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>{{ match.player1.get_full_name|default:match.player1.username }}</td>
-                                        <td>{{ match.get_player1_set1|default:'-' }}</td>
-                                        <td>{{ match.get_player1_set2|default:'-' }}</td>
-                                        <td>{{ match.get_player1_set3|default:'-' }}</td>
-                                        <td>{{ match.get_player1_set4|default:'-' }}</td>
-                                        <td>{{ match.get_player1_set5|default:'-' }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>{{ match.player2.get_full_name|default:match.player2.username }}</td>
-                                        <td>{{ match.get_player2_set1|default:'-' }}</td>
-                                        <td>{{ match.get_player2_set2|default:'-' }}</td>
-                                        <td>{{ match.get_player2_set3|default:'-' }}</td>
-                                        <td>{{ match.get_player2_set4|default:'-' }}</td>
-                                        <td>{{ match.get_player2_set5|default:'-' }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <!-- Score submission form fields would go here -->
                         
-                        {% if user.is_authenticated and is_referee and is_match_referee and not match.is_completed and not match.is_canceled %}
-                            <hr>
-                            <h5>Update Score</h5>
-                            <form method="post" action="{% url 'matches:update_score' match.id %}">
-                                {% csrf_token %}
-                                
-                                <!-- Set 1 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 1</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set1" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set1 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set1" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set1 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 2 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 2</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set2" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set2 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set2" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set2 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 3 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 3</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set3" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set3 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set3" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set3 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 4 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 4</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set4" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set4 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set4" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set4 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 5 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 5</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set5" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set5 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set5" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set5 }}
-                                    </div>
-                                </div>
-                                
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary">Update Score</button>
-                                </div>
-                            </form>
-                        {% endif %}
-                        
-                    {% else %}
-                        <p class="text-center py-3">No score has been recorded for this match yet.</p>
-                        
-                        {% if user.is_authenticated and is_referee and is_match_referee and not match.is_completed and not match.is_canceled %}
-                            <hr>
-                            <h5>Record Score</h5>
-                            <form method="post" action="{% url 'matches:update_score' match.id %}">
-                                {% csrf_token %}
-                                
-                                <!-- Set 1 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 1</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set1" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set1 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set1" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set1 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 2 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 2</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set2" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set2 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set2" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set2 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 3 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 3</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set3" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set3 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set3" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set3 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 4 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 4</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set4" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set4 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set4" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set4 }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Set 5 -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <h6>Set 5</h6>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player1_set5" class="form-label">{{ match.player1.username }}</label>
-                                        {{ score_form.player1_set5 }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_player2_set5" class="form-label">{{ match.player2.username }}</label>
-                                        {{ score_form.player2_set5 }}
-                                    </div>
-                                </div>
-                                
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary">Record Score</button>
-                                </div>
-                            </form>
-                        {% endif %}
-                    {% endif %}
+                        <button type="submit" class="btn btn-primary mt-3">Submit Scores</button>
+                    </form>
                 </div>
             </div>
+        {% endif %}
+    {% endif %}
+    
+    <!-- Match comments section - visible to all -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Match Comments</h5>
+        </div>
+        <div class="card-body">
+            <!-- Comments system would go here -->
+            <p class="text-muted">No comments yet.</p>
         </div>
     </div>
 </div>

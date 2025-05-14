@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.generic import ListView
 from django.contrib.auth.mixins import UserPassesTestMixin
+from core.mixins import PlayerRequiredMixin, RefereeRequiredMixin, OwnershipRequiredMixin
 
 
 def register_view(request):
@@ -120,16 +121,17 @@ class UserLogInView(CreateView):
     def post(self, request):
         username = request.POST.get('username')
         password = request.POST.get('password')
+        next_url = request.POST.get('next') or request.GET.get('next') or 'home'
 
         user = authenticate(username=username, password=password)
 
         if user is not None:
             login(request, user)
             messages.success(request, f"Welcome back, {user.username}!")
-            return redirect('home')
+            return redirect(next_url)
         else:
             messages.error(request, "Invalid username or password.")
-            return render(request, self.template_name)
+            return render(request, self.template_name, {'next': next_url})
 
 @login_required
 def logout_view(request):
@@ -149,6 +151,18 @@ class ProfileView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+
+        from apps.notifications.models import Notification
+        context['unread_notifications_count'] = Notification.objects.filter(
+            user=user,
+            is_read=False
+        ).count()
+        
+        context['action_required_count'] = Notification.objects.filter(
+            user=user,
+            is_read=False,
+            requires_action=True
+        ).count()
 
         if user.is_player():
             context['is_player'] = True
@@ -208,6 +222,35 @@ class ProfileView(LoginRequiredMixin, DetailView):
                 status__in=['SCHEDULED', 'IN_PROGRESS']
             ).order_by('tournament__start_date', 'round_number')[:10]
 
+        return context
+
+# Create a class for viewing other players' profiles with ownership checks
+class PlayerProfileView(LoginRequiredMixin, OwnershipRequiredMixin, DetailView):
+    model = User
+    template_name = 'accounts/player_profile.html'
+    context_object_name = 'viewed_player'
+    
+    def get_owner(self):
+        return self.get_object()
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.get_object()
+        
+        if hasattr(user, 'tennis_player'):
+            context['player_profile'] = user.tennis_player
+            
+            from apps.matches.models import Match
+            from django.db.models import Q
+            
+            # Only show completed matches for privacy
+            player_matches = Match.objects.filter(
+                Q(player1=user) | Q(player2=user),
+                status='COMPLETED'
+            ).order_by('-tournament__start_date', 'round_number')
+            
+            context['player_matches'] = player_matches
+            
         return context
 
 class UserUpdateView(LoginRequiredMixin, UpdateView):

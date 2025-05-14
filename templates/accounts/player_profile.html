@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ viewed_player.get_full_name|default:viewed_player.username }} - Player Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <!-- Player profile info card -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Player Profile</h4>
+                </div>
+                <div class="card-body">
+                    <h3>{{ viewed_player.get_full_name|default:viewed_player.username }}</h3>
+                    <p class="text-muted">Tennis Player</p>
+
+                    <ul class="list-group list-group-flush">
+                        {% if player_profile.date_of_birth %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>Date of Birth:</strong>
+                                    <span>{{ player_profile.date_of_birth|date:"F d, Y" }}</span>
+                                </div>
+                            </li>
+                        {% endif %}
+                        
+                        {% if player_profile.gender %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>Gender:</strong>
+                                    <span>
+                                        {% if player_profile.gender == 'M' %}
+                                            Male
+                                        {% elif player_profile.gender == 'F' %}
+                                            Female
+                                        {% else %}
+                                            {{ player_profile.get_gender_display }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>Current Ranking:</strong>
+                                <span class="badge bg-primary rounded-pill">{{ player_profile.ranking }}</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <!-- Match history -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Completed Matches</h4>
+                </div>
+                <div class="card-body">
+                    {% if player_matches %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tournament</th>
+                                        <th>Opponent</th>
+                                        <th>Round</th>
+                                        <th>Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for match in player_matches %}
+                                        <tr>
+                                            <td>{{ match.tournament.name }}</td>
+                                            <td>
+                                                {% if match.player1 == viewed_player %}
+                                                    {{ match.player2.get_full_name|default:match.player2.username }}
+                                                {% else %}
+                                                    {{ match.player1.get_full_name|default:match.player1.username }}
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ match.round_number }}</td>
+                                            <td>
+                                                {% if match.get_winner == viewed_player %}
+                                                    <span class="badge bg-success">Won</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Lost</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No completed matches found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
